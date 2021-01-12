@@ -306,12 +306,11 @@ int main() {
 //     // init configuration
     ConfigurationVariables::ReadConfiguration(true);//读取Configuration
     #ifdef ROBOT_INFANCY
-        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_infantry.ini));
+        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config_infantry.ini));
     #elif defined ROBOT_HERO
-        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_hero.ini));
-        cout<<FILEDIR(config/config_hero.ini)<<endl;
+        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config_hero.ini));
     #elif defined ROBOT_SENTINEL
-        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_sentinel.ini));
+        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config_sentinel.ini));
     #endif
     if (!ConfigurationVariables::Loaded)
         cout << "Load Configuration Failed. Using default values." << endl;
