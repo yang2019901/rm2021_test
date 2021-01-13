@@ -208,7 +208,7 @@ protected:
 };
 
 
-
+//适用于步兵的打击程序
 class InfancyArmorHiter : public ArmorHiter
 {
 public:
@@ -244,3 +244,42 @@ public:
 protected:
     
 };
+
+
+//适用于英雄的打击程序
+class HeroArmorHiter : public ArmorHiter
+{
+public:
+
+    double ShootAngleThresh = 1;
+    
+    HeroArmorHiter(SerialManager *_serial,ArmorTrackerBase *_armor_tracker) : ArmorHiter(_serial,_armor_tracker)
+    {
+        SET_CONFIG_DOUBLE_VARIABLE(ShootAngleThresh,1)
+    }
+
+    void EnableModule()
+    {
+
+    }
+ 
+    void DisableModule()
+    {
+        EnableModule();
+    }
+
+    void Update(ImageData &frame,float dtTime)
+    {
+        Point2f result = armor_tracker->UpdateFrame(frame,dtTime);
+        if (armor_tracker->trackState) // found target
+        {
+            // 发送消息
+            serial->SendFiringOrder(Length(armor_tracker->shootOffAngle) < ShootAngleThresh ,true);
+            serial->SendPTZAbsoluteAngle(result.x + frame.ptzAngle.x,result.y + frame.ptzAngle.y);
+        }
+    }
+
+protected:
+    
+};
+

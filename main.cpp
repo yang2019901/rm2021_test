@@ -171,7 +171,7 @@ void ImageProcessThread()
     char camparams[100] ;
     // //format output to camparams
     //注意如果更改了源码保存位置一定修改FILEDIR路径
-    sprintf(camparams,FILEDIR(camparams_%d.xml),ConfigurationVariables::resolutionType);
+    sprintf(camparams,FILEDIR(camparams_%d.xml),ConfigurationVariables::resolutionType);    //根据分辨率修改内参矩阵
     CameraView camview(camparams);// load the parameters of the camera
     camview_ptr = &camview;
 
@@ -201,18 +201,16 @@ void ImageProcessThread()
     dfc_detector_ptr = &dfcDetector;
     dfc_detector_ptr->SetTargetArmor(2 - ElectronicControlParams::teamInfo); //设置敌方装甲板颜色
  #elif defined ROBOT_HERO
-    InfancyArmorHiter infancyHiter(serial_ptr,armor_tracker_ptr);
-    armor_hiter_ptr = &infancyHiter;
-
-    EllipseDfcDetector dfcDetector;
-    dfc_detector_ptr = &dfcDetector;
-    dfc_detector_ptr->SetTargetArmor(2 - ElectronicControlParams::teamInfo); //设置敌方装甲板颜色  
+    HeroArmorHiter heroHiter(serial_ptr,armor_tracker_ptr);
+    armor_hiter_ptr = &heroHiter;
 #endif
 
     //初始化serialManager中的模块列表
     //压入2个模块 装甲识别 2； 大风车 1；
-    serial_ptr->RegisterModule(armor_hiter_ptr);
+    serial_ptr->RegisterModule(armor_hiter_ptr);    //将模块push进串口管理器
+#ifdef ROBOT_INFANCY
     // serial_ptr->RegisterModule(dfc_hiter_ptr);
+#endif
 
     int lastIndex = 0;
     ImageData processFrame;
@@ -288,19 +286,19 @@ void ImageDisplayThread()
     }
 }
 //消息发送线程 调试用
-void InfoSendThread()
-{
-    while(threadContinueFlag)
-    {
-    if(res.x != 0.0)
-    {
-    Sleep(50);
-    serial_ptr->SendPTZAbsoluteAngle(res.x,res.y);
-    if(DEBUG_MODE)
-        cout<<"res.x:"<<res.x<<" res.y:"<<res.y<<endl;
-    }
-    }
-}
+// void InfoSendThread()
+// {
+//     while(threadContinueFlag)
+//     {
+//     if(res.x != 0.0)
+//     {
+//     Sleep(50);
+//     serial_ptr->SendPTZAbsoluteAngle(res.x,res.y);
+//     if(DEBUG_MODE)
+//         cout<<"res.x:"<<res.x<<" res.y:"<<res.y<<endl;
+//     }
+//     }
+// }
 
 int main() {
 //     // init configuration
@@ -333,12 +331,12 @@ int main() {
     thread proc_thread(ImageProcessThread);
     thread display_thread(ImageDisplayThread);
     thread collect_thread(ImageCollectThread);
-    thread send_thread(InfoSendThread);
+    // thread send_thread(InfoSendThread);
 
     collect_thread.join();
     proc_thread.join();
     display_thread.join();
-    send_thread.join();
+    // send_thread.join();
 
     return 0;
 }
@@ -350,6 +348,7 @@ void ProcessFullFunction(ImageData &frame)
     // 调试模块的模式下 强制打开模块
     switch(ConfigurationVariables::MainEntry)
     {
+    case 0: serial_ptr->EnableModule(2);serial_ptr->EnableModule(1);break;
     case 1: serial_ptr->EnableModule(2);break;
     case 2: serial_ptr->EnableModule(1);break;
     }
@@ -371,43 +370,6 @@ void ProcessAlgorithmFunction(ImageData &frame)
 void ArmorDetectDebug(ImageData &frame)
 {
     res = armor_tracker_ptr->UpdateFrame(frame,dtTime) * 0.3 + frame.ptzAngle;
-    // armor_detector_ptr->DetectArmors(frame.image);
-    // if(armor_detector_ptr->result.size()>0)
-    // {
-    //     ArmorDetailType armRes[20];
-    //     float confidence[20];
-    //     vector<Mat> imgs;
-
-    //     FOREACH(i,armor_detector_ptr->result.size())
-    //     {
-    //         // initialize res and confidence
-    //         armRes[i] = ARMOR_TYPE_UNKNOWN; //armor_type 
-    //         confidence[i] = 0;           //confidence
-    //         Mat resized;                 //resize img to 28*28
-    //         resize(armor_detector_ptr->ArmorNumberAreaGray(armor_detector_ptr->result[i]),resized,Size(28,28));
-    //         imgs.push_back(resized);     //push to vector                
-    //     }
-    //     dnn_manager_ptr->ClassifyArmors(imgs,armRes,confidence);
-
-    //     if(DEBUG_MODE)
-    //     {
-    //         FOREACH(i,imgs.size())
-    //         {
-    //         cout<<"armor_id:"<<armRes[i]<<"    armor_confidence:"<<confidence[i]<<endl; //查看dnn预测的装甲板id
-    //         }
-    //     }
-
-    //     FOREACH(i,imgs.size())
-    //     {
-    //         switch(armRes[i])
-    //         {
-    //         case 3:case 4:case 5: armRes[i] = ARMOR_INFAN; break;
-    //         case 1:armRes[i] = ARMOR_HERO; break;
-    //         case 2:armRes[i] = ARMOR_ENGIN; break;
-    //         default: armRes[i] = ARMOR_TYPE_UNKNOWN; break;
-    //         }
-    //     }
-    // }
 }
 
 void DfcDetectDebug(ImageData &frame)

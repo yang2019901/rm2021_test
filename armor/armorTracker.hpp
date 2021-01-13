@@ -74,6 +74,7 @@ public:
         // detector->DisallowDebug();
 //LOG(A)
         // track too much or lost target, detect the whole frame and rechoose a target
+        //重新开始检测全图
         if (!trackState || (trackState > InfancyMaxTrackingFrame && trackTargetType == ARMOR_INFAN) ||
                 (trackState > HeroMaxTrackingFrame && trackTargetType == ARMOR_HERO) ||
                 (trackState > EngineerMaxTrackingFrame && trackTargetType == ARMOR_ENGIN) ||
@@ -90,7 +91,7 @@ public:
                 this->InitTracker(frame);
                 trackState = 1;
             }
-            else if (trackerAlgorithmState)
+            else if (trackerAlgorithmState) //即使没有检测到目标，仍然尝试追踪
             {
                 // still try tracking
                 if (UpdateTracker(frame))
@@ -105,11 +106,10 @@ public:
         {
             // 根据上一次计算出的世界坐标 给出在屏幕上的投影位置
             float dis;
-            Point2f lptzAngle = ProjectWorldPositionToPTZAngle(frame,targetWorldPosition,dis);
-            Point2d scrPt = camview->PTZAngleToScreenPoint(lptzAngle * Deg2Rad,dis);
-            
+            Point2f lptzAngle = ProjectWorldPositionToPTZAngle(frame,targetWorldPosition,dis);  
+            Point2d scrPt = camview->PTZAngleToScreenPoint(lptzAngle * Deg2Rad,dis);    //相机坐标系到图像坐标系
 //LOG(C)
-            // first try detection
+            // first try detection长度
             Rect r1 = lastArmor.leftLight.rr.boundingRect(), r2 = lastArmor.rightLight.rr.boundingRect();  
 //LOG(1)
             //int left = min(r1.x, r2.x), top = min(r1.y, r2.y), right = max(r1.x + r1.width, r2.x + r2.width), bottom = max(r1.y + r1.height, r2.y + r2.height);
@@ -326,6 +326,8 @@ protected:
         const float height_weight = 20 , width_weight = 2, whole_scale = 100;
         probDis = (armor.leftLight.rr.size.height + armor.rightLight.rr.size.height) / height_weight +
             (armor.leftLight.rr.size.width + armor.rightLight.rr.size.width) / width_weight;    //装甲板距离的一个量化指标
+        // cout<<armor.leftLight.rr.size.height<<" "<<armor.rightLight.rr.size.height<<endl;
+        cout<<armor.leftLight.rr.size.width<<" "<<armor.rightLight.rr.size.width<<endl;
         probDis *= whole_scale;
         return camview->ScreenPointToPTZAngle(armor.center,probDis,1);
     }
@@ -342,6 +344,15 @@ protected:
         typeScore *= confidence;
         return typeScore -(probDis * ArmorEvaluationDistanceWeight + Length(ptzAngle));
     }
+    // virtual calculateDistance()
+    // {
+    //     vector<Point3f> obj=vector<Point3f>{
+    // cv::Point3f(-HALF_LENGTH, -HALF_LENGTH, 0),	//tl
+    // cv::Point3f(HALF_LENGTH, -HALF_LENGTH, 0),	//tr
+    // cv::Point3f(HALF_LENGTH, HALF_LENGTH, 0),	//br
+    // cv::Point3f(-HALF_LENGTH, HALF_LENGTH, 0)	//bl
+    // };
+    // }
 };
 
 
