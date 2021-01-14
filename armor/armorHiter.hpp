@@ -24,7 +24,6 @@ public:
         serial = _serial;
         armor_tracker = _armor_tracker;
     }
-
 protected:
     ArmorTrackerBase *armor_tracker;
     SerialManager *serial;
@@ -63,16 +62,6 @@ public:
         SET_CONFIG_DOUBLE_VARIABLE(ShootAngleThresh,1);
 
         patrolPitchAngle = PatrolAimLowAngle;
-    }
-
-    void EnableModule()
-    {
-        controlState = 0;
-    }
- 
-    void DisableModule()
-    {
-        EnableModule();
     }
 
     void Update(ImageData &frame,float dtTime)
@@ -220,15 +209,6 @@ public:
         SET_CONFIG_DOUBLE_VARIABLE(ShootAngleThresh,1)
     }
 
-    void EnableModule()
-    {
-
-    }
- 
-    void DisableModule()
-    {
-        EnableModule();
-    }
 
     void Update(ImageData &frame,float dtTime)
     {
@@ -256,16 +236,6 @@ public:
     HeroArmorHiter(SerialManager *_serial,ArmorTrackerBase *_armor_tracker) : ArmorHiter(_serial,_armor_tracker)
     {
         SET_CONFIG_DOUBLE_VARIABLE(ShootAngleThresh,1)
-    }
-
-    void EnableModule()
-    {
-
-    }
- 
-    void DisableModule()
-    {
-        EnableModule();
     }
 
     void Update(ImageData &frame,float dtTime)

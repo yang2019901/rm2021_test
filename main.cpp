@@ -355,11 +355,15 @@ void ProcessFullFunction(ImageData &frame)
     // 调试模块的模式下 强制打开模块
     switch(ConfigurationVariables::MainEntry)
     {
-    case 0: serial_ptr->EnableModule(2);serial_ptr->EnableModule(4);break;
+    case 0: serial_ptr->EnableModule(4);serial_ptr->EnableModule(2);break;
     case 1: serial_ptr->EnableModule(2);break;
     case 2: serial_ptr->EnableModule(4);break;
     }
     serial_ptr->UpdateCurModule(frame,dtTime);
+    // for(int i=0;i<(serial_ptr->module_list.size());i++)
+    // {
+    //     cout<<serial_ptr->module_list[i]->moduleID<<" "<<serial_ptr->module_list[i]->is_enabled<<endl;
+    // }
 }
 
 void ProcessAlgorithmFunction(ImageData &frame)

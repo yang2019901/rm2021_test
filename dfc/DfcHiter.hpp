@@ -32,17 +32,7 @@ public:
 
     }
 
-    void EnableModule()
-    {
-
-    }
- 
-    void DisableModule()
-    {
-        EnableModule();
-    }
-
-    void Update(ImageData &frame,float dtTime)
+      void Update(ImageData &frame,float dtTime)
     {   
         dfcBaseDetector->DetectDfcArmors(frame.image);
     }

@@ -117,14 +117,15 @@ class ModuleBase
 {
 public:
     int moduleID;
+    bool is_enabled = false;
 
     ModuleBase(int id)
     {
         moduleID = id;
     }
 
-    virtual void EnableModule() = 0;//此处的modulebase的构造函数均为弱定义 即被功能模块调用时可以实现重定义
-    virtual void DisableModule() = 0;
+    virtual void EnableModule(){is_enabled = true;} //此处的modulebase的构造函数均为弱定义 即被功能模块调用时可以实现重定义
+    virtual void DisableModule(){is_enabled = false;}
     virtual void Update(ImageData &frame,float dtTime) = 0;
 };
 

@@ -389,8 +389,9 @@ public:
 
     void UpdateCurModule(ImageData frame,float dtTime)
     {
-        //if (curModule > -1)
-            curModule = 0;
+        // if (curModule > -1)
+            // curModule = 0;
+
             module_list[curModule]->Update(frame,dtTime);
     }
 
@@ -402,7 +403,7 @@ public:
         else FOREACH(i, module_list.size())//module_list在图像处理线程中已经被压入相应的模块
         if (module_list[i]->moduleID == moduleID)
         {
-            tgtModule = i;//接受到所需的ID
+            tgtModule = i;//接受到所需的id对应的索引
             break;
         }
         if (tgtModule != -2 && tgtModule != curModule)
