@@ -113,6 +113,11 @@ typedef int ArmorColorType;
 #define ARMOR_BLUE 0
 #define ARMOR_UNKNOWN 1
 
+class PowerRuneModuleBase
+{
+
+};
+
 class ModuleBase
 {
 public:
