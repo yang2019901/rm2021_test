@@ -158,8 +158,8 @@ public:
             if (DEBUG_MODE && trackState)
             {
                 // circle(frame.image,scrPt,3,Scalar(0,0,255),2);
-                rectangle(frame.image,roiRect,Scalar(0,0,255),2);
-                //cout << "world position calculated PTZ off angle " << (lptzAngle * Rad2Deg) << endl;
+                // rectangle(frame.image,roiRect,Scalar(0,0,255),2);
+                // cout << "world position calculated PTZ off angle " << (lptzAngle * Rad2Deg) << endl;
             }
         }
 //LOG(E)
@@ -180,9 +180,9 @@ public:
         {
             if (trackState)
                 circle(frame.image,lastArmor.center, 6 ,Scalar(255,0,255),2);
-            if (trackerAlgorithmState)
-                rectangle(frame.image,trackerBound,Scalar(0,255,0),1);
-            //DEBUG_DISPLAY(frame.image)
+            // if (trackerAlgorithmState)
+                // rectangle(frame.image,trackerBound,Scalar(0,255,0),1);
+            DEBUG_DISPLAY(frame.image)
         }
 //LOG(G)
         return shootOffAngle;
@@ -198,6 +198,7 @@ public:
         FOREACH(i,detector->result.size())
         {
             curPTZ = CalcArmorPTZAngle(detector->result[i],curDis);
+            // solve_pnp(detector->result[i],frame_data);
             curScore = EvaluateArmorPosition(curPTZ,curDis,types[i],confidence[i]);
             if (bestIndex == -1 || curScore > bestScore)
             {
@@ -327,7 +328,7 @@ protected:
         probDis = (armor.leftLight.rr.size.height + armor.rightLight.rr.size.height) / height_weight +
             (armor.leftLight.rr.size.width + armor.rightLight.rr.size.width) / width_weight;    //装甲板距离的一个量化指标
         // cout<<armor.leftLight.rr.size.height<<" "<<armor.rightLight.rr.size.height<<endl;
-        cout<<armor.leftLight.rr.size.width<<" "<<armor.rightLight.rr.size.width<<endl;
+        // cout<<armor.leftLight.rr.size.width<<" "<<armor.rightLight.rr.size.width<<endl;
         probDis *= whole_scale;
         return camview->ScreenPointToPTZAngle(armor.center,probDis,1);
     }
@@ -344,15 +345,40 @@ protected:
         typeScore *= confidence;
         return typeScore -(probDis * ArmorEvaluationDistanceWeight + Length(ptzAngle));
     }
-    // virtual calculateDistance()
-    // {
-    //     vector<Point3f> obj=vector<Point3f>{
-    // cv::Point3f(-HALF_LENGTH, -HALF_LENGTH, 0),	//tl
-    // cv::Point3f(HALF_LENGTH, -HALF_LENGTH, 0),	//tr
-    // cv::Point3f(HALF_LENGTH, HALF_LENGTH, 0),	//br
-    // cv::Point3f(-HALF_LENGTH, HALF_LENGTH, 0)	//bl
-    // };
-    // }
+    virtual void solve_pnp(ArmorResult armor,ImageData &frame)
+    {
+        float HALF_LENGTH = 70;
+        float HALF_HEIGHT = 30 ;
+        vector<Point3f> obj=vector<Point3f>{
+            cv::Point3f(-HALF_LENGTH, -HALF_HEIGHT, 0),	//tl
+            cv::Point3f(HALF_LENGTH, -HALF_HEIGHT, 0),	//tr
+            cv::Point3f(HALF_LENGTH, HALF_HEIGHT, 0),	//br
+            cv::Point3f(-HALF_LENGTH, HALF_HEIGHT, 0)	//bl
+            };
+        vector<Point2f> pnts;
+        Point2f point_tl,point_bl,point_tr,point_br;
+        point_tl = Point2f(armor.leftLight.rr.center.x - armor.leftLight.rr.size.width/2,armor.leftLight.rr.center.y - armor.leftLight.rr.size.height/2);
+        point_bl = Point2f(armor.leftLight.rr.center.x - armor.leftLight.rr.size.width/2,armor.leftLight.rr.center.y + armor.leftLight.rr.size.height/2);
+        point_tr = Point2f(armor.rightLight.rr.center.x + armor.rightLight.rr.size.width/2,armor.rightLight.center.y - armor.rightLight.rr.size.height/2);
+        point_br = Point2f(armor.rightLight.rr.center.x + armor.rightLight.rr.size.width/2,armor.rightLight.center.y + armor.rightLight.rr.size.height/2);
+
+        circle(frame.image,point_tl, 6 ,Scalar(255,0,255),2);
+        circle(frame.image,point_bl, 6 ,Scalar(255,0,255),2);
+        circle(frame.image,point_tr, 6 ,Scalar(255,0,255),2);
+        circle(frame.image,point_br, 6 ,Scalar(255,0,255),2);
+
+        pnts.push_back(point_tl);
+        pnts.push_back(point_tr);
+        pnts.push_back(point_br);
+        pnts.push_back(point_bl);
+
+        Mat rVec,tVec;
+        solvePnP(obj,pnts,camview->get_intrinsic_matrix(),camview->get_distortion_coeffs(),rVec,tVec,false,SOLVEPNP_DLS);
+        // cout<<"rVec:"<<rVec<<endl;
+        // cout<<camview->get_intrinsic_matrix()<<endl;
+        cout<<"tVec:"<<tVec<<endl;
+
+    }
 };
 
 

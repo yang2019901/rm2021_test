@@ -301,8 +301,6 @@ void ImageDisplayThread()
 // }
 
 int main() {
-//     // init configuration
-    ConfigurationVariables::ReadConfiguration(true);//读取Configuration
     #ifdef ROBOT_INFANCY
         ConfigurationVariables::ReadConfiguration(true,FILEDIR(config_infantry.ini));
     #elif defined ROBOT_HERO

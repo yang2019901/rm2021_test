@@ -479,7 +479,14 @@ public:
 
     }
 
-
+    Mat get_intrinsic_matrix()
+    {
+        return intrinsic_matrix;
+    }
+    Mat get_distortion_coeffs()
+    {
+        return distortion_coeffs;
+    }
 protected:
 
     Mat intrinsic_matrix, distortion_coeffs, invert_intrinsic, camera_offset_rot_matrix,inv_camera_offset_rot_matrix;
