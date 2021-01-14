@@ -38,7 +38,7 @@ class DfcBaseDetetor
     public:
     DfcBaseDetetor(){}   
     //Detect Dfc Armor 
-    virtual void DetectDfcArmors(Mat frame) = 0;
+    virtual void DetectDfcArmors(Mat frame) = 0;    //构造成虚函数，方便派生类对象继承
 
     void DisallowDebug()
     {
@@ -100,7 +100,6 @@ class EllipseDfcDetector:public DfcBaseDetetor
         }
         if(DEBUG_MODE)
         DEBUG_DISPLAY(binary);
-        DEBUG_DISPLAY(img);
     }
 
 

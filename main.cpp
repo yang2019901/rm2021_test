@@ -36,7 +36,8 @@
 #include "armorTracker.hpp"
 #include "armorHiter.hpp"
 #include "dnnManager.hpp"
-#include "dfcDetector.hpp"
+#include "DfcDetector.hpp"
+#include "DfcHiter.hpp"
 using namespace cv;
 using namespace std;
 
@@ -123,6 +124,8 @@ ArmorHiter *armor_hiter_ptr = NULL;
 DnnManager *dnn_manager_ptr = NULL;
 
 EllipseDfcDetector *dfc_detector_ptr = NULL;
+DfcHiter * dfc_hiter_ptr = NULL;
+
 
 Point2f res;
 
@@ -187,6 +190,8 @@ void ImageProcessThread()
     PredictPIDArmorTracker predict_pid_tracker(camview_ptr,armor_detector_ptr,dnn_manager_ptr,&linear_predictor);
     armor_tracker_ptr = &predict_pid_tracker;
 
+
+
     // 等待串口类被初始化
     while(!serial_ptr);
     
@@ -200,16 +205,20 @@ void ImageProcessThread()
     EllipseDfcDetector dfcDetector;
     dfc_detector_ptr = &dfcDetector;
     dfc_detector_ptr->SetTargetArmor(2 - ElectronicControlParams::teamInfo); //设置敌方装甲板颜色
+
+    InfancyDfcHiter infancy_dfc_Hiter(serial_ptr,dfc_detector_ptr);
+    dfc_hiter_ptr = &infancy_dfc_Hiter;
+
  #elif defined ROBOT_HERO
     HeroArmorHiter heroHiter(serial_ptr,armor_tracker_ptr);
     armor_hiter_ptr = &heroHiter;
 #endif
 
     //初始化serialManager中的模块列表
-    //压入2个模块 装甲识别 2； 大风车 1；
+    //压入2个模块 装甲识别 2； 大风车 4；
     serial_ptr->RegisterModule(armor_hiter_ptr);    //将模块push进串口管理器
 #ifdef ROBOT_INFANCY
-    // serial_ptr->RegisterModule(dfc_hiter_ptr);
+    serial_ptr->RegisterModule(dfc_hiter_ptr);
 #endif
 
     int lastIndex = 0;
@@ -346,9 +355,9 @@ void ProcessFullFunction(ImageData &frame)
     // 调试模块的模式下 强制打开模块
     switch(ConfigurationVariables::MainEntry)
     {
-    case 0: serial_ptr->EnableModule(2);serial_ptr->EnableModule(1);break;
+    case 0: serial_ptr->EnableModule(2);serial_ptr->EnableModule(4);break;
     case 1: serial_ptr->EnableModule(2);break;
-    case 2: serial_ptr->EnableModule(1);break;
+    case 2: serial_ptr->EnableModule(4);break;
     }
     serial_ptr->UpdateCurModule(frame,dtTime);
 }
@@ -372,5 +381,5 @@ void ArmorDetectDebug(ImageData &frame)
 
 void DfcDetectDebug(ImageData &frame)
 {
-    dfc_detector_ptr->DetectDfcArmors(frame.image);
+    dfc_hiter_ptr->Update(frame,dtTime);
 }

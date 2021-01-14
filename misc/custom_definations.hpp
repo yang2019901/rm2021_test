@@ -13,8 +13,8 @@
 
 // 选择机器人类型（哨兵/步兵）
 //#define ROBOT_SENTINEL
-// #define ROBOT_INFANCY
-#define ROBOT_HERO
+#define ROBOT_INFANCY
+// #define ROBOT_HERO
 // 选择设备（TX/秒算/PC）
 //#define DEVICE_TX
 //#define DEVICE_MANIFOLD
