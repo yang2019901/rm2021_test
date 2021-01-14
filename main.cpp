@@ -381,6 +381,7 @@ void ProcessAlgorithmFunction(ImageData &frame)
 void ArmorDetectDebug(ImageData &frame)
 {
     res = armor_tracker_ptr->UpdateFrame(frame,dtTime) * 0.3 + frame.ptzAngle;
+    Sleep(100);
 }
 
 void DfcDetectDebug(ImageData &frame)

@@ -409,7 +409,7 @@ public:
         if (tgtModule != -2 && tgtModule != curModule)
         {
             if (curModule > -1)
-                module_list[curModule]->DisableModule();
+                module_list[curModule]->DisableModule();    //一次只能运行一个module，所以需要关闭上一个module
             if (tgtModule > -1)
                 module_list[tgtModule]->EnableModule();
             curModule = tgtModule;

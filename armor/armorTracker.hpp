@@ -174,7 +174,6 @@ public:
             targetWorldPosition.x += frame.worldPosition.x;
             targetWorldPosition.z += frame.worldPosition.y;
         }
-
 //LOG(F)
         if (DEBUG_MODE)
         {
@@ -198,7 +197,7 @@ public:
         FOREACH(i,detector->result.size())
         {
             curPTZ = CalcArmorPTZAngle(detector->result[i],curDis);
-            // solve_pnp(detector->result[i],frame_data);
+            solve_pnp(detector->result[i],frame_data,&curDis);
             curScore = EvaluateArmorPosition(curPTZ,curDis,types[i],confidence[i]);
             if (bestIndex == -1 || curScore > bestScore)
             {
@@ -208,6 +207,7 @@ public:
                 bestPTZ = curPTZ;
             }
         }
+        cout<<"best dis:"<<bestDis<<endl;
         // choose target 'bestIndex'
         lastArmor = detector->result[bestIndex];
         ptzOffAngle = bestPTZ;
@@ -327,10 +327,10 @@ protected:
         const float height_weight = 20 , width_weight = 2, whole_scale = 100;
         probDis = (armor.leftLight.rr.size.height + armor.rightLight.rr.size.height) / height_weight +
             (armor.leftLight.rr.size.width + armor.rightLight.rr.size.width) / width_weight;    //装甲板距离的一个量化指标
-        cout<<"armor.leftLight.rr.size.height:"<<armor.leftLight.rr.size.height<<" "<<"armor.rightLight.rr.size.height:"<<armor.rightLight.rr.size.height<<endl;
-        cout<<"armor.leftLight.rr.size.width:"<<armor.leftLight.rr.size.width<<" "<<"armor.rightLight.rr.size.width:"<<armor.rightLight.rr.size.width<<endl;
+        // cout<<"armor.leftLight.rr.size.height:"<<armor.leftLight.rr.size.height<<" "<<"armor.rightLight.rr.size.height:"<<armor.rightLight.rr.size.height<<endl;
+        // cout<<"armor.leftLight.rr.size.width:"<<armor.leftLight.rr.size.width<<" "<<"armor.rightLight.rr.size.width:"<<armor.rightLight.rr.size.width<<endl;
         probDis *= whole_scale;
-        cout<<"probDis:"<<probDis<<endl;
+        // cout<<"probDis:"<<probDis<<endl;
         return camview->ScreenPointToPTZAngle(armor.center,probDis,1);
     }
     // evaluate armor worth shooting by considering ptz offset angle and estimated distance
@@ -346,8 +346,9 @@ protected:
         typeScore *= confidence;
         return typeScore -(probDis * ArmorEvaluationDistanceWeight + Length(ptzAngle));
     }
-    virtual void solve_pnp(ArmorResult armor,ImageData &frame)
+    virtual void solve_pnp(ArmorResult armor,ImageData &frame,float *curdistance)
     {
+        static int count = 0;
         float HALF_LENGTH = 70;
         float HALF_HEIGHT = 30 ;
         vector<Point3f> obj=vector<Point3f>{
@@ -358,15 +359,25 @@ protected:
             };
         vector<Point2f> pnts;
         Point2f point_tl,point_bl,point_tr,point_br;
-        point_tl = Point2f(armor.leftLight.rr.center.x - armor.leftLight.rr.size.width/2,armor.leftLight.rr.center.y - armor.leftLight.rr.size.height/2);
-        point_bl = Point2f(armor.leftLight.rr.center.x - armor.leftLight.rr.size.width/2,armor.leftLight.rr.center.y + armor.leftLight.rr.size.height/2);
-        point_tr = Point2f(armor.rightLight.rr.center.x + armor.rightLight.rr.size.width/2,armor.rightLight.center.y - armor.rightLight.rr.size.height/2);
-        point_br = Point2f(armor.rightLight.rr.center.x + armor.rightLight.rr.size.width/2,armor.rightLight.center.y + armor.rightLight.rr.size.height/2);
+        float armor_width,armor_height;
+        armor_width = armor.rightLight.center.x -armor.leftLight.center.x + armor.leftLight.rr.size.width*0.5 + armor.rightLight.rr.size.width*0.5;
+        armor_height = (armor.leftLight.rr.size.height + armor.rightLight.rr.size.height)*0.5;
 
-        circle(frame.image,point_tl, 6 ,Scalar(255,0,255),2);
-        circle(frame.image,point_bl, 6 ,Scalar(255,0,255),2);
-        circle(frame.image,point_tr, 6 ,Scalar(255,0,255),2);
-        circle(frame.image,point_br, 6 ,Scalar(255,0,255),2);
+
+        point_tl = Point2f(armor.center.x - armor_width*0.5,armor.center.y - armor_height*0.5);
+        point_bl = Point2f(armor.center.x - armor_width*0.5,armor.center.y + armor_height*0.5);
+        point_tr = Point2f(armor.center.x + armor_width*0.5,armor.center.y - armor_height*0.5);
+        point_br = Point2f(armor.center.x + armor_width*0.5,armor.center.y + armor_height*0.5);
+
+        // point_tl = Point2f(armor.leftLight.rr.center.x - armor.leftLight.rr.size.width/2,armor.leftLight.rr.center.y - armor.leftLight.rr.size.height/2);
+        // point_bl = Point2f(armor.leftLight.rr.center.x - armor.leftLight.rr.size.width/2,armor.leftLight.rr.center.y + armor.leftLight.rr.size.height/2);
+        // point_tr = Point2f(armor.rightLight.rr.center.x + armor.rightLight.rr.size.width/2,armor.rightLight.center.y - armor.rightLight.rr.size.height/2);
+        // point_br = Point2f(armor.rightLight.rr.center.x + armor.rightLight.rr.size.width/2,armor.rightLight.center.y + armor.rightLight.rr.size.height/2);
+
+        // circle(frame.image,point_tl, 6 ,Scalar(255,0,255),2);
+        // circle(frame.image,point_bl, 6 ,Scalar(255,0,255),2);
+        // circle(frame.image,point_tr, 6 ,Scalar(255,0,255),2);
+        // circle(frame.image,point_br, 6 ,Scalar(255,0,255),2);
 
         pnts.push_back(point_tl);
         pnts.push_back(point_tr);
@@ -374,10 +385,8 @@ protected:
         pnts.push_back(point_bl);
 
         Mat rVec,tVec;
-        solvePnP(obj,pnts,camview->get_intrinsic_matrix(),camview->get_distortion_coeffs(),rVec,tVec,false,SOLVEPNP_DLS);
-        // cout<<"rVec:"<<rVec<<endl;
-        // cout<<camview->get_intrinsic_matrix()<<endl;
-        cout<<"tVec:"<<tVec<<endl;
+        solvePnP(obj,pnts,camview->get_intrinsic_matrix(),camview->get_distortion_coeffs(),rVec,tVec,false,SOLVEPNP_ITERATIVE);
+        *curdistance = tVec.at<double>(0,2)/3.3;    //3.3是一个测试出来的参数
 
     }
 };
