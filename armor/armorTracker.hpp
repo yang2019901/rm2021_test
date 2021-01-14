@@ -327,9 +327,10 @@ protected:
         const float height_weight = 20 , width_weight = 2, whole_scale = 100;
         probDis = (armor.leftLight.rr.size.height + armor.rightLight.rr.size.height) / height_weight +
             (armor.leftLight.rr.size.width + armor.rightLight.rr.size.width) / width_weight;    //装甲板距离的一个量化指标
-        // cout<<armor.leftLight.rr.size.height<<" "<<armor.rightLight.rr.size.height<<endl;
-        // cout<<armor.leftLight.rr.size.width<<" "<<armor.rightLight.rr.size.width<<endl;
+        cout<<"armor.leftLight.rr.size.height:"<<armor.leftLight.rr.size.height<<" "<<"armor.rightLight.rr.size.height:"<<armor.rightLight.rr.size.height<<endl;
+        cout<<"armor.leftLight.rr.size.width:"<<armor.leftLight.rr.size.width<<" "<<"armor.rightLight.rr.size.width:"<<armor.rightLight.rr.size.width<<endl;
         probDis *= whole_scale;
+        cout<<"probDis:"<<probDis<<endl;
         return camview->ScreenPointToPTZAngle(armor.center,probDis,1);
     }
     // evaluate armor worth shooting by considering ptz offset angle and estimated distance
@@ -398,8 +399,8 @@ public:
         : ArmorTrackerBase(_camview,_detector,_dnn)
     {
         predictor = _prd;
-        yawPID.SetLimitParams(60,10);
-        pitchPID.SetLimitParams(30,5);
+        yawPID.SetLimitParams(0.1,5);
+        pitchPID.SetLimitParams(0.1,5);
         SET_CONFIG_DOUBLE_VARIABLE(PredictionTimeScale,1);
         SET_CONFIG_DOUBLE_VARIABLE(PredictionTimeBias,0);
 
