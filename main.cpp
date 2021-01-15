@@ -108,7 +108,6 @@ void DisplayFPS(Mat &m)
     VideoCapture rmcap("/dev/video0");
 #elif defined DEVICE_PC
     VideoCapture rmcap("/dev/video0");
-    // VideoCapture rmcap("../doc/videos/blue.avi");
 #endif
 
 bool threadContinueFlag = true;
@@ -152,7 +151,9 @@ void ImageCollectThread()
                 frameData.variable.ptzSpeed = ElectronicControlParams::PTZSpeed;
                 frameData.variable.ptzAngle = ElectronicControlParams::PTZAngle;
                 frameData.variable.worldPosition = ElectronicControlParams::worldPosition;
-                frameData.variable.shootSpeed = ElectronicControlParams::shotSpeed;
+                // frameData.variable.shootSpeed = ElectronicControlParams::shotSpeed;
+                frameData.variable.shootSpeed = 12;
+
                 // 告知处理线程，图像准备完成
                 frameData.variable.image = img;
                 frameData.variable.index = frameIndex++;
@@ -295,19 +296,19 @@ void ImageDisplayThread()
     }
 }
 //消息发送线程 调试用
-// void InfoSendThread()
-// {
-//     while(threadContinueFlag)
-//     {
-//     if(res.x != 0.0)
-//     {
-//     Sleep(50);
-//     serial_ptr->SendPTZAbsoluteAngle(res.x,res.y);
-//     if(DEBUG_MODE)
-//         cout<<"res.x:"<<res.x<<" res.y:"<<res.y<<endl;
-//     }
-//     }
-// }
+void InfoSendThread()
+{
+    while(threadContinueFlag)
+    {
+    if(res.x != 0.0)
+    {
+    Sleep(50);
+    serial_ptr->SendPTZAbsoluteAngle(res.x,res.y);
+    // if(DEBUG_MODE)
+    //     cout<<"res:"<<res<<endl;
+    }
+    }
+}
 
 int main() {
     #ifdef ROBOT_INFANCY
@@ -338,12 +339,12 @@ int main() {
     thread proc_thread(ImageProcessThread);
     thread display_thread(ImageDisplayThread);
     thread collect_thread(ImageCollectThread);
-    // thread send_thread(InfoSendThread);
+    thread send_thread(InfoSendThread);
 
     collect_thread.join();
     proc_thread.join();
     display_thread.join();
-    // send_thread.join();
+    send_thread.join();
 
     return 0;
 }
@@ -380,8 +381,8 @@ void ProcessAlgorithmFunction(ImageData &frame)
 
 void ArmorDetectDebug(ImageData &frame)
 {
-    res = armor_tracker_ptr->UpdateFrame(frame,dtTime) * 0.3 + frame.ptzAngle;
-    Sleep(100);
+    // res = armor_tracker_ptr->UpdateFrame(frame,dtTime) * 0.3 + frame.ptzAngle;
+    res = armor_tracker_ptr->UpdateFrame(frame,dtTime)*0.3;
 }
 
 void DfcDetectDebug(ImageData &frame)

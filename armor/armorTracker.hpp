@@ -158,7 +158,7 @@ public:
             if (DEBUG_MODE && trackState)
             {
                 // circle(frame.image,scrPt,3,Scalar(0,0,255),2);
-                // rectangle(frame.image,roiRect,Scalar(0,0,255),2);
+                rectangle(frame.image,roiRect,Scalar(0,0,255),2);
                 // cout << "world position calculated PTZ off angle " << (lptzAngle * Rad2Deg) << endl;
             }
         }
@@ -179,8 +179,8 @@ public:
         {
             if (trackState)
                 circle(frame.image,lastArmor.center, 6 ,Scalar(255,0,255),2);
-            // if (trackerAlgorithmState)
-                // rectangle(frame.image,trackerBound,Scalar(0,255,0),1);
+            if (trackerAlgorithmState)
+                rectangle(frame.image,trackerBound,Scalar(0,255,0),1);
             DEBUG_DISPLAY(frame.image)
         }
 //LOG(G)
@@ -194,10 +194,11 @@ public:
         Point2f bestPTZ,curPTZ;
         float bestDis,curDis,bestScore,curScore;
         int bestIndex = -1;
+
         FOREACH(i,detector->result.size())
         {
-            curPTZ = CalcArmorPTZAngle(detector->result[i],curDis);
             solve_pnp(detector->result[i],frame_data,&curDis);
+            curPTZ = CalcArmorPTZAngle(detector->result[i],curDis);
             curScore = EvaluateArmorPosition(curPTZ,curDis,types[i],confidence[i]);
             if (bestIndex == -1 || curScore > bestScore)
             {
@@ -207,7 +208,6 @@ public:
                 bestPTZ = curPTZ;
             }
         }
-        cout<<"best dis:"<<bestDis<<endl;
         // choose target 'bestIndex'
         lastArmor = detector->result[bestIndex];
         ptzOffAngle = bestPTZ;
@@ -324,12 +324,12 @@ protected:
     virtual Point2f CalcArmorPTZAngle(ArmorResult armor,float &probDis)
     {
         // estimate the distance of the armor        
-        const float height_weight = 20 , width_weight = 2, whole_scale = 100;
-        probDis = (armor.leftLight.rr.size.height + armor.rightLight.rr.size.height) / height_weight +
-            (armor.leftLight.rr.size.width + armor.rightLight.rr.size.width) / width_weight;    //装甲板距离的一个量化指标
-        // cout<<"armor.leftLight.rr.size.height:"<<armor.leftLight.rr.size.height<<" "<<"armor.rightLight.rr.size.height:"<<armor.rightLight.rr.size.height<<endl;
-        // cout<<"armor.leftLight.rr.size.width:"<<armor.leftLight.rr.size.width<<" "<<"armor.rightLight.rr.size.width:"<<armor.rightLight.rr.size.width<<endl;
-        probDis *= whole_scale;
+        // const float height_weight = 20 , width_weight = 2, whole_scale = 100;
+        // probDis = (armor.leftLight.rr.size.height + armor.rightLight.rr.size.height) / height_weight +
+        //     (armor.leftLight.rr.size.width + armor.rightLight.rr.size.width) / width_weight;    //装甲板距离的一个量化指标
+        // // cout<<"armor.leftLight.rr.size.height:"<<armor.leftLight.rr.size.height<<" "<<"armor.rightLight.rr.size.height:"<<armor.rightLight.rr.size.height<<endl;
+        // // cout<<"armor.leftLight.rr.size.width:"<<armor.leftLight.rr.size.width<<" "<<"armor.rightLight.rr.size.width:"<<armor.rightLight.rr.size.width<<endl;
+        // probDis *= whole_scale;
         // cout<<"probDis:"<<probDis<<endl;
         return camview->ScreenPointToPTZAngle(armor.center,probDis,1);
     }
@@ -348,7 +348,7 @@ protected:
     }
     virtual void solve_pnp(ArmorResult armor,ImageData &frame,float *curdistance)
     {
-        static int count = 0;
+        static float last_distance = 0;
         float HALF_LENGTH = 70;
         float HALF_HEIGHT = 30 ;
         vector<Point3f> obj=vector<Point3f>{
@@ -387,6 +387,11 @@ protected:
         Mat rVec,tVec;
         solvePnP(obj,pnts,camview->get_intrinsic_matrix(),camview->get_distortion_coeffs(),rVec,tVec,false,SOLVEPNP_ITERATIVE);
         *curdistance = tVec.at<double>(0,2)/3.3;    //3.3是一个测试出来的参数
+        if (last_distance!= 0)
+        {
+            *curdistance = (*curdistance + last_distance)*0.5;
+            last_distance = *curdistance;
+        }
 
     }
 };

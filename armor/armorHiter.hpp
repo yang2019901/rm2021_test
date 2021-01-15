@@ -244,8 +244,9 @@ public:
         if (armor_tracker->trackState) // found target
         {
             // 发送消息
-            serial->SendFiringOrder(Length(armor_tracker->shootOffAngle) < ShootAngleThresh ,true);
+            // serial->SendFiringOrder(Length(armor_tracker->shootOffAngle) < ShootAngleThresh ,true);
             serial->SendPTZAbsoluteAngle(result.x + frame.ptzAngle.x,result.y + frame.ptzAngle.y);
+            cout<<"result.x:"<<result.x<<" "<<"result.y:"<<result.y<<endl;
         }
     }
 

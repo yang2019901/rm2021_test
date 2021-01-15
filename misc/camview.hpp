@@ -284,7 +284,9 @@ public:
     Point2d ScreenPointToPTZAngle(Point2d scrp, float dis, float ang_rate = 0.5f) {
         Point3d vec = ScreenPointToVec(scrp);   //图像坐标系转相机坐标系
         vec = ConvertCameraVectoPTZVec(vec * (dis/VecLen(vec)));    //相机坐标系转世界坐标系
+        cout<<"vec:"<< vec<<endl;
         return VecToAngle(vec, ang_rate);
+        
     }
     Point2d AngleToScreenPoint(Point2f rad)
     {
