@@ -76,6 +76,32 @@ void capture_init(VideoCapture &capture)
     //0-1 映射到qv4l2的1-5000
 }
 
+void capture_writer_init(VideoWriter &Writer,VideoCapture &capture)
+{
+    int write_fps = capture.get(CV_CAP_PROP_FPS);  //获取摄像机帧率
+    String write_name = getCurrentTimeStr() + ".avi";   //video名称
+	if (write_fps <= 0) write_fps = 25;
+    Size write_size;                                //video size
+    if (ConfigurationVariables::GetInt("resolutionType",0) == 0)
+        write_size = Size(960,720); //480p的分辨率经过了resize，所以需要重新处理下
+    else
+        write_size = Size(capture.get(CAP_PROP_FRAME_WIDTH),capture.get(CAP_PROP_FRAME_HEIGHT));
+    
+	//创建视频文件
+	Writer.open(write_name,                          //路径
+		VideoWriter::fourcc('M', 'J', 'P', 'G'), //编码格式
+		write_fps,                                  //帧率
+		write_size                                  //尺寸
+		);
+	if (!Writer.isOpened())
+	{
+		cout << "VideoWriter open failed!" << endl;
+		getchar();
+
+	}
+	cout << "VideoWriter open success!" << endl;
+}
+
 // returns delta time
 void UpdateFPS()
 {
@@ -108,12 +134,15 @@ void DisplayFPS(Mat &m)
     VideoCapture rmcap("/dev/video0");
 #elif defined DEVICE_PC
     VideoCapture rmcap("/dev/video0");
+    // VideoCapture rmcap("/home/lyx/Desktop/rm2021_adv/build/out.avi");
+    VideoWriter rmvw;
 #endif
 
 bool threadContinueFlag = true;
 char waitedKey = 0;
 bool onpause = false;
 Lock<ImageData> frameData;//the framedata includes the data of every image
+Lock<ImageData> writeData; //videowrite data 
 // modules definations
 SerialManager *serial_ptr = NULL;
 CameraView *camview_ptr = NULL;
@@ -136,6 +165,7 @@ void ImageCollectThread()
     serial_ptr = &serialManager;
 
     int frameIndex = 0;
+    int writeIndex = 0;
     Mat img;
     while(threadContinueFlag)
     {
@@ -160,6 +190,13 @@ void ImageCollectThread()
                 // DEBUG_DISPLAY(frameData.variable.image);
             //}
             frameData.Unlock(); //数据更改完成，解锁
+
+            writeData.Lock();
+            {
+            writeData.variable.image = img;
+            writeData.variable.index = writeIndex++;
+            }
+            writeData.Unlock();
 
         }
         catch(...)
@@ -299,6 +336,27 @@ void ImageDisplayThread()
 	    sleep(1);
     }
 }
+//视频录制线程
+void VideoWriteThread()
+{
+    ImageData recordFrame;
+    int lastIndex = 0;
+    while(threadContinueFlag)    
+	{
+        if (lastIndex >= writeData.variable.index) continue;
+        writeData.Lock();
+            writeData.variable.copyTo(recordFrame);
+        writeData.Unlock();
+        lastIndex = recordFrame.index;
+        if (recordFrame.image.empty()) 
+        {
+            break;
+        }
+		//写入视频文件
+		rmvw.write(recordFrame.image);
+	}
+}
+
 // //消息发送线程 调试用
 // void InfoSendThread()
 // {
@@ -330,6 +388,7 @@ int main() {
 
 //     // init camera capture
     capture_init(rmcap);
+    capture_writer_init(rmvw,rmcap);
 
 //     // calibration process differs
     if (ConfigurationVariables::MainEntry == 10)//相机标定程序
@@ -343,12 +402,12 @@ int main() {
     thread proc_thread(ImageProcessThread);
     thread display_thread(ImageDisplayThread);
     thread collect_thread(ImageCollectThread);
-    // thread send_thread(InfoSendThread);
+    thread write_thread(VideoWriteThread);
 
     collect_thread.join();
     proc_thread.join();
     display_thread.join();
-    // send_thread.join();
+    write_thread.join();
 
     return 0;
 }
