@@ -253,8 +253,6 @@ void ImageProcessThread()
 
 //LOG(C)
             DisplayFPS(processFrame.image);
-            if(DEBUG_MODE)
-                DEBUG_DISPLAY(processFrame.image);
             waitedKey = 0;
 
         }
@@ -269,7 +267,13 @@ void ImageProcessThread()
         if(frames == 0 && ConfigurationVariables::KeepUpdateConfiguration)
         {
             // reloading configuration variables
-            ConfigurationVariables::ReadConfiguration(false);
+            #ifdef ROBOT_INFANCY
+                ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_infantry.ini));
+            #elif defined ROBOT_HERO
+                ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_hero.ini));
+            #elif defined ROBOT_SENTINEL
+                ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_sentinel.ini));
+            #endif
             if (!ConfigurationVariables::Loaded) cout << "Error when update configuration variables." << endl;
         }
     }
@@ -295,28 +299,28 @@ void ImageDisplayThread()
 	    sleep(1);
     }
 }
-//消息发送线程 调试用
-void InfoSendThread()
-{
-    while(threadContinueFlag)
-    {
-    if(res.x != 0.0)
-    {
-    Sleep(50);
-    serial_ptr->SendPTZAbsoluteAngle(res.x,res.y);
-    // if(DEBUG_MODE)
-    //     cout<<"res:"<<res<<endl;
-    }
-    }
-}
+// //消息发送线程 调试用
+// void InfoSendThread()
+// {
+//     while(threadContinueFlag)
+//     {
+//     if(res.x != 0.0)
+//     {
+//     Sleep(50);
+//     serial_ptr->SendPTZAbsoluteAngle(res.x,res.y);
+//     // if(DEBUG_MODE)
+//     //     cout<<"res:"<<res<<endl;
+//     }
+//     }
+// }
 
 int main() {
     #ifdef ROBOT_INFANCY
-        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config_infantry.ini));
+        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_infantry.ini));
     #elif defined ROBOT_HERO
-        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config_hero.ini));
+        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_hero.ini));
     #elif defined ROBOT_SENTINEL
-        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config_sentinel.ini));
+        ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_sentinel.ini));
     #endif
     if (!ConfigurationVariables::Loaded)
         cout << "Load Configuration Failed. Using default values." << endl;
@@ -339,12 +343,12 @@ int main() {
     thread proc_thread(ImageProcessThread);
     thread display_thread(ImageDisplayThread);
     thread collect_thread(ImageCollectThread);
-    thread send_thread(InfoSendThread);
+    // thread send_thread(InfoSendThread);
 
     collect_thread.join();
     proc_thread.join();
     display_thread.join();
-    send_thread.join();
+    // send_thread.join();
 
     return 0;
 }
@@ -356,7 +360,7 @@ void ProcessFullFunction(ImageData &frame)
     // 调试模块的模式下 强制打开模块
     switch(ConfigurationVariables::MainEntry)
     {
-    case 0: serial_ptr->EnableModule(4);serial_ptr->EnableModule(2);break;
+    case 0: serial_ptr->EnableModule(4);serial_ptr->EnableModule(2);break;  //默认打开自瞄模式
     case 1: serial_ptr->EnableModule(2);break;
     case 2: serial_ptr->EnableModule(4);break;
     }
@@ -381,7 +385,6 @@ void ProcessAlgorithmFunction(ImageData &frame)
 
 void ArmorDetectDebug(ImageData &frame)
 {
-    // res = armor_tracker_ptr->UpdateFrame(frame,dtTime) * 0.3 + frame.ptzAngle;
     res = armor_tracker_ptr->UpdateFrame(frame,dtTime)*0.3;
 }
 

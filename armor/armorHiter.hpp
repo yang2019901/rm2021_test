@@ -240,13 +240,17 @@ public:
 
     void Update(ImageData &frame,float dtTime)
     {
-        Point2f result = armor_tracker->UpdateFrame(frame,dtTime);
+        Point2f result = (armor_tracker->UpdateFrame(frame,dtTime))*0.3;
         if (armor_tracker->trackState) // found target
         {
             // 发送消息
             // serial->SendFiringOrder(Length(armor_tracker->shootOffAngle) < ShootAngleThresh ,true);
             serial->SendPTZAbsoluteAngle(result.x + frame.ptzAngle.x,result.y + frame.ptzAngle.y);
-            cout<<"result.x:"<<result.x<<" "<<"result.y:"<<result.y<<endl;
+            
+            // if(DEBUG_MODE)
+            // {
+            // cout<<"result.x:"<<result.x<<" "<<"result.y:"<<result.y<<endl;
+            // }
         }
     }
 
