@@ -395,12 +395,12 @@ int main() {
     thread proc_thread(ImageProcessThread);
     thread display_thread(ImageDisplayThread);
     thread collect_thread(ImageCollectThread);
-    thread write_thread(VideoWriteThread);
+    // thread write_thread(VideoWriteThread);
 
     collect_thread.join();
     proc_thread.join();
     display_thread.join();
-    write_thread.join();
+    // write_thread.join();
 
     return 0;
 }

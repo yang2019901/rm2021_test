@@ -249,7 +249,7 @@ public:
             
             // if(DEBUG_MODE)
             // {
-            // cout<<"result.x:"<<result.x<<" "<<"result.y:"<<result.y<<endl;
+            cout<<"result.x:"<<result.x<<" "<<"result.y:"<<result.y<<endl;
             // }
         }
     }

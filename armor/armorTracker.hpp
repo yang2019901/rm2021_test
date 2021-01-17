@@ -132,6 +132,7 @@ public:
                     detector->result[i].rightLight.rr.center += startPoint;
                     detector->result[i].rightLight.center += startPoint;
                 }
+                // ChooseTarget(frame);
                 this->GetArmorTypes(armRes,confidence);
                 ChooseTarget(frame,armRes,confidence);
                 if (trackerAlgorithmState > TrackerResetTime || !UpdateTracker(frame))
@@ -419,11 +420,11 @@ public:
             shootOffAngle += ptz - ptzOffAngle;
             ptzOffAngle = ptz;
 
-            if (DEBUG_MODE)
-            {
-                Point2d scrPt = camview->PTZAngleToScreenPoint(ptz * Deg2Rad,dis);
-                circle(frame.image,scrPt, 3 ,Scalar(255,255,255),1);
-            }
+            // if (DEBUG_MODE)
+            // {
+            //     Point2d scrPt = camview->PTZAngleToScreenPoint(ptz * Deg2Rad,dis);
+            //     circle(frame.image,scrPt, 3 ,Scalar(255,255,255),1);
+            // }
             // the target angle is shootoffangle
             return Point2f(
                 yawPID.calc(shootOffAngle.x),
