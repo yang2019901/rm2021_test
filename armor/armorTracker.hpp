@@ -70,18 +70,15 @@ public:
     // the base class only consider shootOffAngle as the ptz control deltaAngle
     virtual Point2f UpdateFrame(ImageData frame,float deltaTime)
     {
-        // disable detectors' debug image
-        // detector->DisallowDebug();
-//LOG(A)
-        // track too much or lost target, detect the whole frame and rechoose a target
-        //重新开始检测全图
+        /*********************************进行全图检测***********************************************/
         if (!trackState || (trackState > InfancyMaxTrackingFrame && trackTargetType == ARMOR_INFAN) ||
                 (trackState > HeroMaxTrackingFrame && trackTargetType == ARMOR_HERO) ||
                 (trackState > EngineerMaxTrackingFrame && trackTargetType == ARMOR_ENGIN) ||
                 (trackState > InfancyMaxTrackingFrame && trackTargetType == ARMOR_TYPE_UNKNOWN))
         {
+            /*********************************装甲板检测***********************************************/
             detector->DetectArmors(frame.image);
-//LOG(B)
+            /*********************************检测到目标***********************************************/
             if (detector->result.size() > 0)
             {
                 ArmorDetailType armRes[20]; 
@@ -91,7 +88,8 @@ public:
                 this->InitTracker(frame);
                 trackState = 1;
             }
-            else if (trackerAlgorithmState) //即使没有检测到目标，仍然尝试追踪
+            /*********************************未检测到目标，开启追踪**************************************/
+            else if (trackerAlgorithmState) 
             {
                 // still try tracking
                 if (UpdateTracker(frame))
@@ -99,37 +97,31 @@ public:
                 else trackState = 0;
             }
             else
-                // not found any possible target
+            /********************************未检测到目标，未开启追踪**************************************/
                 trackState = 0;
         }
-        else // small-range detect or just track
+        /*************************************ROI区域检测***********************************************/
+        else 
         {
             // 根据上一次计算出的世界坐标 给出在屏幕上的投影位置
             float dis;
             Point2f lptzAngle = ProjectWorldPositionToPTZAngle(frame,targetWorldPosition,dis);  
-            Point2d scrPt = camview->PTZAngleToScreenPoint(lptzAngle * Deg2Rad,dis);    //相机坐标系到图像坐标系
-//LOG(C)
-            // first try detection长度
+            Point2d scrPt = camview->PTZAngleToScreenPoint(lptzAngle * Deg2Rad,dis);    
             Rect r1 = lastArmor.leftLight.rr.boundingRect(), r2 = lastArmor.rightLight.rr.boundingRect();  
-//LOG(1)
-            //int left = min(r1.x, r2.x), top = min(r1.y, r2.y), right = max(r1.x + r1.width, r2.x + r2.width), bottom = max(r1.y + r1.height, r2.y + r2.height);
-            //Rect roiRect(left,top,right-left,bottom-top);
             int width = max(r1.x + r1.width, r2.x + r2.width) - min(r1.x, r2.x), height = max(r1.y + r1.height, r2.y + r2.height) - min(r1.y, r2.y);
             width *= DetectionROIScale ; height *= DetectionROIScale;
             Rect roiRect(scrPt.x - width * 0.5f,scrPt.y - height * 0.5f,width,height);  
-//LOG(2)
-            //roiRect.x -= roiRect.width * (DetectionROIScale - 1) * 0.5f;
-            //roiRect.y -= roiRect.height * (DetectionROIScale - 1) * 0.5f;
-            //roiRect.width *= DetectionROIScale; roiRect.height *= DetectionROIScale;
+
             MakeRectSafe(frame.image,roiRect);  
             Point2f startPoint(roiRect.x,roiRect.y);
             Mat roiRegion = frame.image(roiRect).clone();
-//LOG(4)
+            /*********************************roi装甲板检测********************************************/
             detector->DetectArmors(roiRegion);
-//LOG(D)
-            // check detection result
+            /*********************************检测到目标***********************************************/
             if (detector->result.size() > 0)
             {
+                ArmorDetailType armRes[20]; 
+                float confidence[20];     
                 trackState++;
                 // transform the result in roi to frame image
                 FOREACH(i,detector->result.size())
@@ -140,10 +132,12 @@ public:
                     detector->result[i].rightLight.rr.center += startPoint;
                     detector->result[i].rightLight.center += startPoint;
                 }
-                ChooseTarget(frame);
+                this->GetArmorTypes(armRes,confidence);
+                ChooseTarget(frame,armRes,confidence);
                 if (trackerAlgorithmState > TrackerResetTime || !UpdateTracker(frame))
                     InitTracker(frame);
-            }//else trackState = 0;
+            }
+            /*********************************未检测到目标**********************************************/
             else
             {
                 if (UpdateTracker(frame))
@@ -155,15 +149,14 @@ public:
                 else // tracking failed, lost target
                     trackState = 0;
             }
+            /***********************************Track Mode Debug***************************************/
             if (DEBUG_MODE && trackState)
             {
-                // circle(frame.image,scrPt,3,Scalar(0,0,255),2);
-                rectangle(frame.image,roiRect,Scalar(0,0,255),2);
-                // cout << "world position calculated PTZ off angle " << (lptzAngle * Rad2Deg) << endl;
+                rectangle(frame.image,roiRect,Scalar(255,255,0),2);
             }
         }
-//LOG(E)
-        // 如果检测成功，计算装甲的世界坐标
+        
+        /****************************如果检测成功，计算装甲的世界坐标**************************************/
         if (trackState)
         {
             Point2f worldAngle = (ptzOffAngle + frame.ptzAngle) * Deg2Rad;
@@ -174,7 +167,7 @@ public:
             targetWorldPosition.x += frame.worldPosition.x;
             targetWorldPosition.z += frame.worldPosition.y;
         }
-//LOG(F)
+        /*************************************Debug**********************************************/
         if (DEBUG_MODE)
         {
             if (trackState)
@@ -183,7 +176,6 @@ public:
                 rectangle(frame.image,trackerBound,Scalar(0,255,0),1);
             DEBUG_DISPLAY(frame.image)
         }
-//LOG(G)
         return shootOffAngle;
     }
 

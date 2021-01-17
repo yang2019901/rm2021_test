@@ -114,3 +114,26 @@ Good luck!
 1.解决了debug模式无法关闭的问题，原因在于之前添加了根据不同机器人种类读取不同的config文件，但是如果config文件里面配置了keepupdate，他还会继续读取默认文件，从而覆盖之前的config配置。
 
 2.添加VideoWriter线程，在调试的时候会自动录制视频，但是保存在build文件夹，所以不会备份到git上，防止仓库文件过大，视频分辨率要注意原始相机如果是480p的分辨率需要resize成960*720的分辨率再进行保存。
+
+## 2021.1.17
+
+1.精简了main.cpp内容。
+
+2.待修复：目前发现yaw轴和pitch轴的pid还是有一些问题，在config.ini文件里面配置，还是有一点超调，如果调太小了，可能又跟不上
+
+3.修改了18年dnn的一个bug:
+
+```c++
+    void ChooseTarget(ImageData &frame_data)
+    {
+        ArmorDetailType t_types[20];
+        float t_conf[20];
+        FOREACH(i,detector->result.size()){
+            t_types[i] = trackTargetType;
+            t_conf[i] = 0.5f;
+        }
+        ChooseTarget(frame_data,t_types,t_conf);
+    }
+```
+
+该函数会在追踪模式下运行，所以在track模式下，处理线程不会运行dnn网络，会把roi区域里面所有备选装甲板的confidence设置为0.5，然后选择最佳区域，所以在Track模式的时候，可能会出现将两块装甲板之间的区域识别成装甲板的问题。
