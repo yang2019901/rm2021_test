@@ -24,6 +24,7 @@ using namespace cv;
 // 与上面相反
 #define Deg2Rad 0.0174532925
 
+const float GRAVITY=9.78;
 
 // 用TimeStart开始标记时间，TimePoint打印当前与上一次时间标记之间的时间间隔，以毫秒为单位
 // 其中caption表示打印的提示内容
@@ -250,8 +251,20 @@ inline Point2f GetRectCenterPoint(Rect rect)
 
 Point2f CalculateGravityAngle(float shootAngle,float shootSpeed,float distance)
 {
-    float time = distance / shootSpeed , h = 4.9f * time * time;
-    return Point2f(0, atan(h/distance));
+    float resistant_factor=0.026;
+
+    #if MODE
+    factor=;
+    #elif MODE
+    factor=;
+    #endif
+    
+    float t,y;
+    t=(float)((exp(resistant_factor*distance)-1)/(resistant_factor*shootSpeed*cos(shootAngle)));
+    y=(float)(shootSpeed*sin(shootAngle)*t-(GRAVITY/2)*t*t);
+    
+    return Point2f(0,atan(y/distance));
+    
 }
 
 class PID

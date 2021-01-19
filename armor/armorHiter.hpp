@@ -148,7 +148,12 @@ public:
                 serial ->SendMotionControl(0,0,0);
             else
                 serial->SendMotionControl(movement,0,0);
-            serial->SendPTZAbsoluteAngle(trackResult.x + frame.ptzAngle.x,trackResult.y + frame.ptzAngle.y);
+
+            float curdistance;
+            curdistance=armor_tracker->lastArmorDistance ;
+            Point2f Corction=corection(armor_tracker,&curdistance);
+
+            serial->SendPTZAbsoluteAngle(trackResult.x + frame.ptzAngle.x+Corction.x,trackResult.y + frame.ptzAngle.y+Corction.y);
             serial->SendRecommandedFireSpeed(20);
             // 计算位置
             //patrolMotionPosition += movement * dtTime;
@@ -163,6 +168,17 @@ protected:
     float patrolMotionPosition = 0,patrolAimPosition = 0,aimCurtime = 0,patrolPitchAngle = 0;
     float targetLostTime = 0;
    
+    Point2f corection(ArmorTrackerBase* armor,float* curdistance){
+        double yaw=armor->ptzOffAngle.x;
+        float distance = *(curdistance);
+        double detla_x=distance*sin(yaw);
+        double detla_y=distance*cos(yaw);                                                                                                 
+        Point2f result;
+        result.y=0;
+        result.x=(2*TrackMinMotionSpeed*detla_x-1+sqrt(((2*TrackMinMotionSpeed*detla_x-1)*(2*TrackMinMotionSpeed*detla_x-1)-4*TrackMinMotionSpeed*TrackMinMotionSpeed*(detla_x*detla_x+detla_y*detla_y-400))))/(2*TrackMinMotionSpeed);
+        return result;
+    }
+
     float PingPong(float &val,float min,float max)
     {
         float l = max - min,l2 = l*2;
@@ -194,6 +210,8 @@ protected:
         float rt = off < 45 ? off / 45.0f : 1;
         return TrackMinMotionSpeed + (TrackMaxMotionSpeed - TrackMinMotionSpeed) * rt;
     }
+
+
 };
 
 

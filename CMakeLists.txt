@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(RM2021_Adv)
 
+set(OpenCV_DIR "/usr/local/opencv-master/share/OpenCV")
 find_package( OpenCV REQUIRED )
 find_package( Threads)
 add_definitions(-w)

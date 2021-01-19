@@ -15,6 +15,7 @@
 #include "armorDetector.hpp"
 #include "dnnManager.hpp"
 #include "trackerMedianFlow.hpp"
+//#include "anti_top.hpp"
 
 using namespace cv;
 using namespace std;
@@ -88,6 +89,13 @@ public:
                 float confidence[20];       
                 this->GetArmorTypes(armRes,confidence);
                 ChooseTarget(frame,armRes,confidence);
+                //anti_top apply_anti_top(last_Armor);
+                /*
+                if(apply_anti_top.is_top){
+                    
+                }
+                */
+
                 this->InitTracker(frame);
                 trackState = 1;
             }
