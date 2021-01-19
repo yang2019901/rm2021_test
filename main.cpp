@@ -49,6 +49,32 @@ void DfcDetectDebug(ImageData &frame);
 double lastt = getTickCount(), curt = lastt,checkpoint_time = lastt,dtTime = 0;
 int fps  = 0,frames = 0;
 
+// returns delta time
+void UpdateFPS()
+{
+    frames++;
+    curt = (double)getTickCount();
+    //getTickFrequency 返回时钟频率
+    //如果当前时钟减去上次输出时钟计数器为运行频率，则统计当前frames
+    if (curt - checkpoint_time >= getTickFrequency()) 
+    {
+        checkpoint_time = curt;
+        fps = frames;
+        frames = 0;
+        cout <<"fps:"<< fps << endl;
+    }
+    dtTime = (curt - lastt) / getTickFrequency();
+    lastt = curt;  
+}
+
+void DisplayFPS(Mat &m)
+{
+    char fpsstr[30];
+    sprintf(fpsstr,"fps:%d",fps);
+    putText(m,fpsstr,Point(20,20),FONT_HERSHEY_SIMPLEX,1.0,Scalar(0,0,0),2);
+
+}
+
 void capture_init(VideoCapture &capture)
 {
     //设置帧缓存,capture.set返回1则设置成功，返回0则设置失败
@@ -76,65 +102,14 @@ void capture_init(VideoCapture &capture)
     //0-1 映射到qv4l2的1-5000
 }
 
-void capture_writer_init(VideoWriter &Writer,VideoCapture &capture)
-{
-    int write_fps = capture.get(CV_CAP_PROP_FPS);  //获取摄像机帧率
-    String write_name = getCurrentTimeStr() + ".avi";   //video名称
-	if (write_fps <= 0) write_fps = 25;
-    Size write_size;                                //video size
-    if (ConfigurationVariables::GetInt("resolutionType",0) == 0)
-        write_size = Size(960,720); //480p的分辨率经过了resize，所以需要重新处理下
-    else
-        write_size = Size(capture.get(CAP_PROP_FRAME_WIDTH),capture.get(CAP_PROP_FRAME_HEIGHT));
-    
-	//创建视频文件
-	Writer.open(write_name,                          //路径
-		VideoWriter::fourcc('M', 'J', 'P', 'G'), //编码格式
-		write_fps,                                  //帧率
-		write_size                                  //尺寸
-		);
-	if (!Writer.isOpened())
-	{
-		cout << "VideoWriter open failed!" << endl;
-		getchar();
-
-	}
-	cout << "VideoWriter open success!" << endl;
-}
-
-// returns delta time
-void UpdateFPS()
-{
-    frames++;
-    curt = (double)getTickCount();
-    //getTickFrequency 返回时钟频率
-    //如果当前时钟减去上次输出时钟计数器为运行频率，则统计当前frames
-    if (curt - checkpoint_time >= getTickFrequency()) 
-    {
-        checkpoint_time = curt;
-        fps = frames;
-        frames = 0;
-        cout <<"fps:"<< fps << endl;
-    }
-    dtTime = (curt - lastt) / getTickFrequency();
-    lastt = curt;  
-}
-
-void DisplayFPS(Mat &m)
-{
-    char fpsstr[30];
-    sprintf(fpsstr,"fps:%d",fps);
-    putText(m,fpsstr,Point(20,20),FONT_HERSHEY_SIMPLEX,1.0,Scalar(0,0,0),2);
-
-}
-
 #if defined DEVICE_TX
     VideoCapture rmcap("/dev/video0");
+    VideoWriter rmvw;
 #elif defined DEVICE_MANIFOLD
     VideoCapture rmcap("/dev/video0");
+    VideoWriter rmvw;
 #elif defined DEVICE_PC
     VideoCapture rmcap("/dev/video0");
-    // VideoCapture rmcap("/home/lyx/Desktop/rm2021_adv/build/out.avi");
     VideoWriter rmvw;
 #endif
 
@@ -339,40 +314,59 @@ void ImageDisplayThread()
 //视频录制线程
 void VideoWriteThread()
 {
+    /**********************rmvw init************************/
+    int write_fps = rmcap.get(CV_CAP_PROP_FPS);  //获取摄像机帧率
+    String write_name = getCurrentTimeStr() + ".avi";   //video名称
+	if (write_fps <= 0) write_fps = 25;
+    Size write_size;                                //video size
+    if (ConfigurationVariables::GetInt("resolutionType",0) == 0)
+        write_size = Size(960,720); //480p的分辨率经过了resize，所以需要重新处理下
+    else
+        write_size = Size(rmcap.get(CAP_PROP_FRAME_WIDTH),rmcap.get(CAP_PROP_FRAME_HEIGHT));
+    
+	//创建视频文件
+	rmvw.open(write_name,                          //路径
+		VideoWriter::fourcc('M', 'J', 'P', 'G'), //编码格式
+		write_fps,                                  //帧率
+		write_size                                  //尺寸
+		);
+	if (!rmvw.isOpened())
+	{
+		cout << "VideoWriter open failed!" << endl;
+		getchar();
+
+	}
+	cout << "VideoWriter open success!" << endl;
+    /**********************Video write************************/
     ImageData recordFrame;
     int lastIndex = 0;
     while(threadContinueFlag)    
 	{
-        if (lastIndex >= writeData.variable.index) continue;
-        writeData.Lock();
-            writeData.variable.copyTo(recordFrame);
-        writeData.Unlock();
-        lastIndex = recordFrame.index;
-        if (recordFrame.image.empty()) 
+        try
         {
-            break;
+            if (lastIndex >= writeData.variable.index) continue;
+            writeData.Lock();
+                writeData.variable.copyTo(recordFrame);
+            writeData.Unlock();
+            lastIndex = recordFrame.index;
+            if (recordFrame.image.empty()) 
+            {
+                break;
+            }
+            //写入视频文件
+            rmvw.write(recordFrame.image);
+            }
+        catch(...)
+        {
+            cout << "Error in Write." << endl;
         }
-		//写入视频文件
-		rmvw.write(recordFrame.image);
+        
+
 	}
 }
 
-// //消息发送线程 调试用
-// void InfoSendThread()
-// {
-//     while(threadContinueFlag)
-//     {
-//     if(res.x != 0.0)
-//     {
-//     Sleep(50);
-//     serial_ptr->SendPTZAbsoluteAngle(res.x,res.y);
-//     // if(DEBUG_MODE)
-//     //     cout<<"res:"<<res<<endl;
-//     }
-//     }
-// }
-
 int main() {
+    /*********************************Load configration***************************************/
     #ifdef ROBOT_INFANCY
         ConfigurationVariables::ReadConfiguration(true,FILEDIR(config/config_infantry.ini));
     #elif defined ROBOT_HERO
@@ -386,11 +380,10 @@ int main() {
         cout << "Configuration Loaded Successfully." << endl;
     ElectronicControlParams::teamInfo = ConfigurationVariables::GetInt("StartArmorType",2);
 
-//     // init camera capture
+    /*********************************Init videocapture***************************************/
     capture_init(rmcap);
-    capture_writer_init(rmvw,rmcap);
 
-//     // calibration process differs
+    /*********************************camera calibration***************************************/
     if (ConfigurationVariables::MainEntry == 10)//相机标定程序
     {
         char camparams[100] ;
@@ -402,12 +395,12 @@ int main() {
     thread proc_thread(ImageProcessThread);
     thread display_thread(ImageDisplayThread);
     thread collect_thread(ImageCollectThread);
-    thread write_thread(VideoWriteThread);
+    // thread write_thread(VideoWriteThread);
 
     collect_thread.join();
     proc_thread.join();
     display_thread.join();
-    write_thread.join();
+    // write_thread.join();
 
     return 0;
 }
