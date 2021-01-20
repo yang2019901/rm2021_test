@@ -109,7 +109,7 @@ void capture_init(VideoCapture &capture)
     VideoCapture rmcap("/dev/video0");
     VideoWriter rmvw;
 #elif defined DEVICE_PC
-    VideoCapture rmcap("/dev/video0");
+    VideoCapture rmcap("/dev/video2");
     VideoWriter rmvw;
 #endif
 
