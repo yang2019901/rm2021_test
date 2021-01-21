@@ -36,8 +36,7 @@
 #include "armorTracker.hpp"
 #include "armorHiter.hpp"
 #include "dnnManager.hpp"
-#include "DfcDetector.hpp"
-#include "DfcHiter.hpp"
+#include "Mill.hpp"
 using namespace cv;
 using namespace std;
 
@@ -45,7 +44,7 @@ using namespace std;
 void ProcessFullFunction(ImageData &frame);
 void ProcessAlgorithmFunction(ImageData &frame);
 void ArmorDetectDebug(ImageData &frame);
-void DfcDetectDebug(ImageData &frame);
+void MillDetectDebug(ImageData &frame);
 double lastt = getTickCount(), curt = lastt,checkpoint_time = lastt,dtTime = 0;
 int fps  = 0,frames = 0;
 
@@ -126,8 +125,7 @@ ArmorTrackerBase *armor_tracker_ptr = NULL;
 ArmorHiter *armor_hiter_ptr = NULL;
 DnnManager *dnn_manager_ptr = NULL;
 
-EllipseDfcDetector *dfc_detector_ptr = NULL;
-DfcHiter * dfc_hiter_ptr = NULL;
+MillBase * mill_hiter_ptr = NULL;
 
 
 Point2f res;
@@ -215,12 +213,8 @@ void ImageProcessThread()
     InfancyArmorHiter infancyHiter(serial_ptr,armor_tracker_ptr);
     armor_hiter_ptr = &infancyHiter;
 
-    EllipseDfcDetector dfcDetector;
-    dfc_detector_ptr = &dfcDetector;
-    dfc_detector_ptr->SetTargetArmor(2 - ElectronicControlParams::teamInfo); //设置敌方装甲板颜色
-
-    InfancyDfcHiter infancy_dfc_Hiter(serial_ptr,dfc_detector_ptr);
-    dfc_hiter_ptr = &infancy_dfc_Hiter;
+    InfancMillHiter infancy_mill_Hiter(serial_ptr);
+    mill_hiter_ptr = &infancy_mill_Hiter;
 
  #elif defined ROBOT_HERO
     HeroArmorHiter heroHiter(serial_ptr,armor_tracker_ptr);
@@ -231,7 +225,7 @@ void ImageProcessThread()
     //压入2个模块 装甲识别 2； 大风车 4；
     serial_ptr->RegisterModule(armor_hiter_ptr);    //将模块push进串口管理器
 #ifdef ROBOT_INFANCY
-    serial_ptr->RegisterModule(dfc_hiter_ptr);
+    serial_ptr->RegisterModule(mill_hiter_ptr);
 #endif
 
     int lastIndex = 0;
@@ -429,8 +423,8 @@ void ProcessAlgorithmFunction(ImageData &frame)
         case 4:  // armor detect
             ArmorDetectDebug(frame);
             break;
-        case 5: //dfc detect
-            DfcDetectDebug(frame);
+        case 5: //mill detect
+            MillDetectDebug(frame);
             break;
     }
 }
@@ -440,7 +434,7 @@ void ArmorDetectDebug(ImageData &frame)
     res = armor_tracker_ptr->UpdateFrame(frame,dtTime)*0.3;
 }
 
-void DfcDetectDebug(ImageData &frame)
+void MillDetectDebug(ImageData &frame)
 {
-    dfc_hiter_ptr->Update(frame,dtTime);
+    mill_hiter_ptr->Update(frame,dtTime);
 }

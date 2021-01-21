@@ -1,3 +1,9 @@
+/* 
+*  namespace "millhiter" mainly contains MillHiter class and designed to fulfill mill-hitting ability as its name goes.
+*  It is deprived from Mill.hpp, thus independent, and focused on mill-hitting, the ability part.
+*  Due to its independency, it can be relatively easy to add functions to this class and namespace.
+*/
+
 #ifndef MILLHITER_HPP
 #define MILLHITER_HPP
 #include <iostream>
