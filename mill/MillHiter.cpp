@@ -330,7 +330,7 @@ bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, doub
     bool noR = !this->_centerRAvail;
     bool noRoi = !this->_roiAvail;
     if (!noRoi)
-        rectangle(src, _roi, Scalar(0, 255, 255), 2);
+        rectangle(src, _roi, Scalar(0, 255, 255), 2);       // TODO:if all things goes right, it can be deleted 
 
     else if (noRoi && noR) // 最初始的状态
     {
