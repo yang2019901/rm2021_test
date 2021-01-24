@@ -214,7 +214,7 @@ void ImageProcessThread()
     InfancyArmorHiter infancyHiter(serial_ptr,armor_tracker_ptr);
     armor_hiter_ptr = &infancyHiter;
 
-    InfancMillHiter infancy_mill_Hiter(serial_ptr);
+    InfancyMillHiter infancy_mill_Hiter(serial_ptr);
     mill_hiter_ptr = &infancy_mill_Hiter;
 
  #elif defined ROBOT_HERO
