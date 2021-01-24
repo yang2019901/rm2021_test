@@ -30,7 +30,7 @@ public:
         else if (2 - ElectronicControlParams::teamInfo == ARMOR_RED)
             this->setColor(RED);
         else 
-            printf("the color paras of InfancyMillHiter is wrong\n");
+            printf("the color paras of \'MillHiter()\' is wrong\n");
         return ;
     };
     void Update(ImageData &frame, float dtTime)
@@ -43,7 +43,7 @@ public:
         if (!this->targetLock(img, prePos))
             return;
         circle(img, prePos, 3, Scalar(0, 255, 255), -1);
-        if (this->predictIn(prePos, postPos, dtTime, CONSTMODE))
+        if (this->predictConstSpeed(prePos, postPos, dtTime))
             circle(img, postPos, 3, Scalar(0, 255, 255), -1);
 
         imshow("marked frame", img);

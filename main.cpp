@@ -108,7 +108,7 @@ void capture_init(VideoCapture &capture)
     VideoCapture rmcap("/dev/video0");
     VideoWriter rmvw;
 #elif defined DEVICE_PC
-    VideoCapture rmcap("/dev/video2");
+    VideoCapture rmcap("/dev/video0");
     VideoWriter rmvw;
 #endif
 
@@ -134,6 +134,7 @@ Point2f res;
 void ImageCollectThread()
 {
     SerialPort serialPort(ConfigurationVariables::GetInt("Port",1));
+    printf("line137 in main.cpp\n");
     SerialManager serialManager(&serialPort);
     serial_ptr = &serialManager;
 
@@ -373,7 +374,7 @@ int main() {
     else
         cout << "Configuration Loaded Successfully." << endl;
     ElectronicControlParams::teamInfo = ConfigurationVariables::GetInt("StartArmorType",2);
-
+    
     /*********************************Init videocapture***************************************/
     capture_init(rmcap);
 
@@ -385,13 +386,13 @@ int main() {
         CameraView::CalibrateCameraProcess(camparams,rmcap); // write the parameters of the camera into the camparas.xml
         return 0;
     }
-
+    
     thread proc_thread(ImageProcessThread);
     thread display_thread(ImageDisplayThread);
     thread collect_thread(ImageCollectThread);
     // thread write_thread(VideoWriteThread);
 
-    collect_thread.join();
+    collect_thread.join();  // TODO: FIND WHAT'S WRONG IN THIS THREAD
     proc_thread.join();
     display_thread.join();
     // write_thread.join();

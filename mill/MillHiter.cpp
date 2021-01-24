@@ -11,35 +11,6 @@ using namespace chrono;
 
 namespace millhiter{
 
-const bool BLUE = false;
-const bool RED = true;
-
-const bool DEG = false;
-const bool RAD = true;
-
-const int CONSTMODE = 0;   // 小能量机关模式
-const int SINMODE = 1;     // 大能量机关模式
-const int CONSTSPEED = 60; // 小能量机关模式下，机关旋转的角速度。单位: deg/s
-
-const int UNKNOWN = 0;
-const int CLOCKWISE = 1; // 注意方向，由于图片坐标系的x轴不变而y轴反向，故在极坐标系下参考方向也反向，变为顺时针。
-const int COUNTERCLOCKWISE = -1;
-
-#ifndef PI
-#define PI 3.1415927
-#endif
-
-#ifndef RAD2DEG
-#define RAD2DEG(rad) ((rad)*180 / PI)
-#endif
-
-#ifndef DEG2RAD
-#define DEG2RAD(deg) ((deg)*PI / 180)
-#endif
-
-#define TIMING true
-#define DISTANCE(p1, p2) sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2))
-
 // returned angle ranging from -PI to PI (aka from -180 deg to 180 deg)
 float formatAngle(float angle, bool unit)
 {
@@ -66,8 +37,273 @@ float formatAngle(float angle, bool unit)
     return angle;
 }
 
+// Usually, default params work well and needless to set
+bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, double nearbyPercentage, uint angleSampleSize)
+{
+    if (src.empty())
+    {
+        printf("src received by \'targetLock()\' is empty\n");
+        return false;
+    }
+
+    bool noR = !this->_centerRAvail;
+    bool unknownDir = (this->_spinDir == UNKNOWN);
+    bool noRoi = !this->_roiAvail;
+    if (noR) // 最初始的状态
+    {
+        Point2f centerNow;
+        if (this->findMillCenter(src, centerNow)) // 此时findMillCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
+        {
+            this->_sampleR.push_back(centerNow);
+            if (_sampleR.size() >= dotSampleSize) // 如果_sample.size() 已经达到SampleSize（取了一个不大不小的值 10 作为样本容量的默认值），就开始拟合中心。策略：把偏差过大的点舍去，取“聚点”
+            {
+                for (int i = 0; i < dotSampleSize; i++)
+                {
+                    int neighborNum = 1; // 该点和它本身距离为0，足够小，故临近点个数初始化为1，子循环遍历从第i+1个开始
+                    for (int j = i + 1; j < dotSampleSize; j++)
+                        if (DISTANCE(this->_sampleR[i], this->_sampleR[j]) < DistanceErr) // 注意：这里的误差是需要调节的，此处草率地预设为 7.0
+                            neighborNum++;
+                    if (double(neighborNum) / dotSampleSize >= nearbyPercentage) // 有超过nearbyPercentage的点聚集在该点的周围，可以认为该点就是“聚点”
+                    {
+                        this->_centerRAvail = true;
+                        this->_centerR = this->_sampleR[i];
+                        noR = false;
+                        break; // 找到R后，跳出循环，进行后续的_roi和_spinDir的寻找
+                    }
+                    if (i == dotSampleSize) // 遍历至此，还不退出，这说明没有点是聚点，所以清空所有样本数据，重测
+                    {
+                        this->_sampleR.clear();
+                        return false;
+                    }
+                }
+            }
+        }
+        return false; // 由于没有centerR时，什么也干不了，故直接返回false
+    }
+
+    // 中心已找到，this->_centerR已初始化
+    if (!noR && unknownDir)
+    {
+        RotatedRect target;
+        if (this->targetDetect(src, target, mode))
+        {
+            this->_angle.push_back(this->getAngle(this->_centerR, target.center, DEG));
+            if (this->_angle.size() >= angleSampleSize)
+            {
+                int n = this->_angle.size();
+                float dAngle = formatAngle(this->_angle[n - 1] - this->_angle[0], DEG); // 这里假设了最后一帧的角度和第一帧的角度相差不超过 180 deg（实际上用的帧数是很少的，结合大风车的速度，不可能到180 deg）。
+                if (dAngle > 0)                                                         // 按参考方向旋转，即顺时针
+                    this->_spinDir = CLOCKWISE;
+                else
+                    this->_spinDir = COUNTERCLOCKWISE;
+            }
+        }
+    }
+
+    // 与判断机关旋转方向是同步执行的
+    if (!noR && noRoi) // 不加else是因为可能在此帧拟合出来了R点，如果加了，在这帧，这个分支就会被跳过
+    {
+        this->_roi = centerRoi(src, this->_centerR);                       // centerRoi一般会成功，但也有可能失败
+        if (this->_roi.width == src.cols && this->_roi.height == src.rows) // 如果出现_roi区域和全图的大小一样，说明这次寻找失败了，设置_roiAvail为false，下次再找
+        {
+            this->_roiAvail = false;
+        }
+        else
+        {
+            this->_roiAvail = true;
+        }
+    }
+
+    if (this->_roiAvail && this->_centerRAvail && this->_spinDir != UNKNOWN)
+        return true;
+    return false;
+}
+
 void MillHiter::setColor(bool colorFlag) { this->_colorFlag = colorFlag; }
 
+// time cost: 1-3 milliseconds
+// @params aim: coordinate of the target will be stored here!
+bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, double DistanceErr, double nearbyPercentage)
+{
+    // preprocess:
+    if (src.empty())
+    {
+        printf("src received by 'targetLock()' is empty\n");
+        return false;
+    }
+
+    bool noR = !this->_centerRAvail;
+    bool noRoi = !this->_roiAvail;
+    if (!noRoi)
+        rectangle(src, _roi, Scalar(0, 255, 255), 2);       // TODO:if all things goes right, it can be deleted 
+
+    else if (noRoi && noR) // 最初始的状态
+    {
+        Point2f centerNow;
+        if (this->findMillCenter(src, centerNow)) // 此时findMillCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
+        {
+            this->_sampleR.push_back(centerNow);
+            if (_sampleR.size() < SampleSize)
+            {
+                this->_roi = Rect(0, 0, src.cols, src.rows);
+            }
+            else // 如果_sample.size() 已经达到SampleSize（取了一个不大不小的值 10 作为样本容量的默认值），就开始拟合中心。策略：把偏差过大的点舍去，取“聚点”
+            {
+                for (int i = 0; i < SampleSize; i++)
+                {
+                    int neighborNum = 1; // 该点和它本身距离为0，足够小，故临近点个数初始化为1，子循环遍历从第i+1个开始
+                    for (int j = i + 1; j < SampleSize; j++)
+                        if (DISTANCE(this->_sampleR[i], this->_sampleR[j]) < DistanceErr) // 注意：这里的误差是需要调节的，此处草率地预设为 7.0
+                            neighborNum++;
+                    if (double(neighborNum) / SampleSize >= nearbyPercentage) // 有超过nearbyPercentage的点聚集在该点的周围，可以认为该点就是“聚点”
+                    {
+                        this->_centerRAvail = true;
+                        this->_centerR = this->_sampleR[i];
+                        noR = false;
+                        break;
+                    }
+                    if (i == SampleSize) // 遍历至此，还不退出，这说明没有点是聚点，所以清空所有样本数据，重测
+                    {
+                        this->_sampleR.clear();
+                        this->_roi = Rect(0, 0, src.cols, src.rows);
+                    }
+                }
+            }
+        }
+        else // 说明 findMillCenter 失败了，此时不改变 _sampleR，将roi设置为全图（即在全图中寻找）
+        {
+            this->_roi = Rect(0, 0, src.cols, src.rows);
+        }
+    }
+
+    if (noRoi && !noR) // 不加else是因为可能在此帧拟合出来了R点，如果加了，在这帧，这个分支就会被跳过
+    {
+        this->_roi = centerRoi(src, this->_centerR);                       // centerRoi一般会成功，但也有可能失败
+        if (this->_roi.width == src.cols && this->_roi.height == src.rows) // 如果出现_roi区域和全图的大小一样，说明这次寻找失败了，设置_roiAvail为false，下次再找
+        {
+            this->_roiAvail = false;
+        }
+        else
+        {
+            this->_roiAvail = true;
+        }
+    }
+
+    Mat roi = Mat(src, this->_roi);
+    RotatedRect target;
+    if (!this->targetDetect(roi, target, mode))
+        return false;
+    aim.x = target.center.x + this->_roi.x;
+    aim.y = target.center.y + this->_roi.y;
+    return true;
+}
+
+// @param prePos is the center of target region at this moment.
+// @param dt is measured by milliseconds
+bool MillHiter::predictConstSpeed(const Point2f &nowPos, Point2f &predPos, double dt)
+{
+
+    /*  dt: ms  CONSTSPEED: deg/s  */
+    if (!this->_centerRAvail)
+    { /* printf("center R is needed to predict\n"); */
+        return false;
+    }
+    else
+    {
+        double dAngle = CONSTSPEED * (dt / 1000) * this->_spinDir;
+        dAngle = DEG2RAD(dAngle);
+        predPos.x = this->_centerR.x + (nowPos.x - this->_centerR.x) * cos(dAngle) - (nowPos.y - this->_centerR.y) * sin(dAngle);
+        predPos.y = this->_centerR.y + (nowPos.x - this->_centerR.x) * sin(dAngle) + (nowPos.y - this->_centerR.y) * cos(dAngle);
+        return true;
+    }
+}
+
+// very rough, need test and improvement
+bool MillHiter::predictSineSpeed(const Point2f &nowPos, double now, Point2f &predPos, double dt)
+{
+    /* TODO:put prediction code of sine-motion here  */
+    // Presumption: theta_k = theta_k-1 + omega_k-1 * dt; omega_k = omega_k-1
+    // Reason: 'dt' is small that omega is nearly a constant.
+    static int count = 0;
+    static int stateNum = 4;
+    static int measureNum = 2;
+    static KalmanFilter KF(stateNum, measureNum, 0);
+    static Mat measurement = Mat::zeros(measureNum, 1, CV_32F);
+    static vector<double> angles;
+    static vector<double> t; // to record when each angle in 'angles' was made
+
+    if (count == -1) // meaning that _angle and _phase is found
+    {
+        double predAngle = A * sin(b * (now + dt) + this->_spinParams._phase) + c * (now + dt) + this->_spinParams._angle;
+        predPos.x = this->_centerR.x + (nowPos.x - this->_centerR.x) * cos(predAngle) - (nowPos.y - this->_centerR.y) * sin(predAngle);
+        predPos.y = this->_centerR.y + (nowPos.x - this->_centerR.x) * sin(predAngle) + (nowPos.y - this->_centerR.y) * cos(predAngle);
+        return true;
+    }
+
+    if (count == 0) //初始化
+    {
+        setIdentity(KF.measurementMatrix);                      // H=[1,0,0,0;0,1,0,0] 测量矩阵
+        setIdentity(KF.processNoiseCov, Scalar::all(1e-5));     // Q 高斯白噪声，单位阵
+        setIdentity(KF.measurementNoiseCov, Scalar::all(1e-1)); // R 高斯白噪声，单位阵
+        setIdentity(KF.errorCovPost, Scalar::all(1));           // P后验误差估计协方差矩阵，初始化为单位阵
+        randn(KF.statePost, Scalar::all(0), Scalar::all(0.1));  // 初始化状态为随机值
+        setIdentity(KF.transitionMatrix);
+    }
+    if (t.size() != 0)
+        KF.transitionMatrix = (Mat_<float>(stateNum, stateNum) << 1, 0, now - t.back(), 0, //A 状态转移矩阵
+                               0, 1, 0, now - t.back(),
+                               0, 0, 1, 0,
+                               0, 0, 0, 1);
+    KF.predict();
+    measurement.at<float>(0) = (float)nowPos.x;
+    measurement.at<float>(1) = (float)nowPos.y;
+    Mat state = KF.correct(measurement);
+    Point2f bestGuess(state.at<float>(0), state.at<float>(1));
+
+    double angle = this->getAngle(this->_centerR, bestGuess, RAD);
+    angles.push_back(angle);
+    t.push_back(now);
+
+    if (angles.size() >= 3)
+    {
+        /* TODO: solve equation to get the theta(t) function */
+
+        // use its spining rule, no systematic error
+        double dt1 = t[0] - t[1];
+        double dt2 = t[0] - t[2];
+        double dAngle1 = formatAngle(angles[0] - angles[1], RAD);
+        double dAngle2 = formatAngle(angles[0] - angles[2], RAD);
+        double value1 = dAngle1 - c * dt1 / (2 * A * sin(b * dt1 / 2));
+        double value2 = dAngle2 - c * dt2 / (2 * A * sin(b * dt2 / 2));
+        if (fabs(value1) > 1 && fabs(value2) > 1)
+        {
+            t.clear();
+            angles.clear();
+            printf("Error reported from \'predictSineSpeed()\' in MillHiter class: invalid value of sine. cannot be solved\n");
+            return false;
+        }
+
+        if (value1 < value2) // TODO: check whether this judging method will cause bug.
+            this->_spinParams._phase = -(-acos(value1) - b * (t[0] + t[1]) / 2);
+        else
+            this->_spinParams._phase = -(acos(value1) - b * (t[0] + t[1]) / 2);
+
+        this->_spinParams._angle = angles[0] - c * t[0] - A * sin(b * t[0] + this->_spinParams._phase);
+        double predAngle = A * sin(b * (now + dt) + this->_spinParams._phase) + c * (now + dt) + this->_spinParams._angle;
+        predPos.x = this->_centerR.x + (nowPos.x - this->_centerR.x) * cos(predAngle) - (nowPos.y - this->_centerR.y) * sin(predAngle);
+        predPos.y = this->_centerR.y + (nowPos.x - this->_centerR.x) * sin(predAngle) + (nowPos.y - this->_centerR.y) * cos(predAngle);
+
+        count = -1;
+        return true;
+    }
+
+    count++;
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////// FUNCITIONS BELOW HAVE BEEN TESTED. NO NEED TO CHECK IF YOU ARE PRETTY SURE THEY HAVE BUGS //////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 对于wind.mp4 对中心标志R的识别效果很好
 bool MillHiter::findMillCenter(Mat src, Point2f &center) const
 {
@@ -315,85 +551,7 @@ bool MillHiter::targetDetect(Mat roi, RotatedRect &target, int mode)
     }
 }
 
-// 该ROI设置算法对相机参考系与大符参考系的相对静止有严重依赖！！！
-// 对于wind.mp4，ROI设置好后，有一定的优化效果，设置前则每帧耗时5-6ms
-// 显然，如果已经过类中的初始化函数MillHiter::init()初始化，那么MillHiter::targetLock()的耗时就会很短，只是做了一个在ROI中识别的工作
-bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, double DistanceErr, double nearbyPercentage)
-{
-    // preprocess:
-    if (src.empty())
-    {
-        printf("src received by 'targetLock()' is empty\n");
-        return false;
-    }
-
-    bool noR = !this->_centerRAvail;
-    bool noRoi = !this->_roiAvail;
-    if (!noRoi)
-        rectangle(src, _roi, Scalar(0, 255, 255), 2);       // TODO:if all things goes right, it can be deleted 
-
-    else if (noRoi && noR) // 最初始的状态
-    {
-        Point2f centerNow;
-        if (this->findMillCenter(src, centerNow)) // 此时findMillCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
-        {
-            this->_sampleR.push_back(centerNow);
-            if (_sampleR.size() < SampleSize)
-            {
-                this->_roi = Rect(0, 0, src.cols, src.rows);
-            }
-            else // 如果_sample.size() 已经达到SampleSize（取了一个不大不小的值 10 作为样本容量的默认值），就开始拟合中心。策略：把偏差过大的点舍去，取“聚点”
-            {
-                for (int i = 0; i < SampleSize; i++)
-                {
-                    int neighborNum = 1; // 该点和它本身距离为0，足够小，故临近点个数初始化为1，子循环遍历从第i+1个开始
-                    for (int j = i + 1; j < SampleSize; j++)
-                        if (DISTANCE(this->_sampleR[i], this->_sampleR[j]) < DistanceErr) // 注意：这里的误差是需要调节的，此处草率地预设为 7.0
-                            neighborNum++;
-                    if (double(neighborNum) / SampleSize >= nearbyPercentage) // 有超过nearbyPercentage的点聚集在该点的周围，可以认为该点就是“聚点”
-                    {
-                        this->_centerRAvail = true;
-                        this->_centerR = this->_sampleR[i];
-                        noR = false;
-                        break;
-                    }
-                    if (i == SampleSize) // 遍历至此，还不退出，这说明没有点是聚点，所以清空所有样本数据，重测
-                    {
-                        this->_sampleR.clear();
-                        this->_roi = Rect(0, 0, src.cols, src.rows);
-                    }
-                }
-            }
-        }
-        else // 说明 findMillCenter 失败了，此时不改变 _sampleR，将roi设置为全图（即在全图中寻找）
-        {
-            this->_roi = Rect(0, 0, src.cols, src.rows);
-        }
-    }
-
-    if (noRoi && !noR) // 不加else是因为可能在此帧拟合出来了R点，如果加了，在这帧，这个分支就会被跳过
-    {
-        this->_roi = centerRoi(src, this->_centerR);                       // centerRoi一般会成功，但也有可能失败
-        if (this->_roi.width == src.cols && this->_roi.height == src.rows) // 如果出现_roi区域和全图的大小一样，说明这次寻找失败了，设置_roiAvail为false，下次再找
-        {
-            this->_roiAvail = false;
-        }
-        else
-        {
-            this->_roiAvail = true;
-        }
-    }
-
-    Mat roi = Mat(src, this->_roi);
-    RotatedRect target;
-    if (!this->targetDetect(roi, target, mode))
-        return false;
-    aim.x = target.center.x + this->_roi.x;
-    aim.y = target.center.y + this->_roi.y;
-    return true;
-}
-
-// return degree angle (ranging from -90 to +270)
+// return degree angle (ranging from -180 to +180)
 inline double MillHiter::getAngle(const Point2f &center, const Point2f &pos, bool unit) const
 {
     if (unit == RAD)
@@ -422,117 +580,6 @@ double MillHiter::getAngularSpeed(const Point2f &center, const Point2f &nowPos, 
         return AngularSpeed;
     else
         return DEG2RAD(AngularSpeed);
-}
-
-bool MillHiter::predictIn(const Point2f &prePos, Point2f &postPos, double dt, int mode)
-{
-    /*  dt: ms  CONSTSPEED: deg/s  */
-    if (mode == CONSTMODE)
-    {
-        if (!this->_centerRAvail)
-        { /* printf("center R is needed to predict\n"); */
-            return false;
-        }
-        else
-        {
-            double dAngle = CONSTSPEED * (dt / 1000) * this->_spinDir;
-            dAngle = DEG2RAD(dAngle);
-            postPos.x = this->_centerR.x + (prePos.x - this->_centerR.x) * cos(dAngle) - (prePos.y - this->_centerR.y) * sin(dAngle);
-            postPos.y = this->_centerR.y + (prePos.x - this->_centerR.x) * sin(dAngle) + (prePos.y - this->_centerR.y) * cos(dAngle);
-            return true;
-        }
-    }
-    else if (mode == SINMODE)
-    {
-        /* put prediction code of sine-motion here  */
-        return false;
-    }
-    else
-    {
-        cout << "wrong mode\n";
-        return false;
-    }
-}
-
-bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, double nearbyPercentage, uint angleSampleSize)
-{
-    if (src.empty())
-    {
-        printf("src received by \'targetLock()\' is empty\n");
-        return false;
-    }
-
-    bool noR = !this->_centerRAvail;
-    bool unknownDir = (this->_spinDir == UNKNOWN);
-    bool noRoi = !this->_roiAvail;
-    if (noR) // 最初始的状态
-    {
-        Point2f centerNow;
-        if (this->findMillCenter(src, centerNow)) // 此时findMillCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
-        {
-            this->_sampleR.push_back(centerNow);
-            if (_sampleR.size() >= dotSampleSize) // 如果_sample.size() 已经达到SampleSize（取了一个不大不小的值 10 作为样本容量的默认值），就开始拟合中心。策略：把偏差过大的点舍去，取“聚点”
-            {
-                for (int i = 0; i < dotSampleSize; i++)
-                {
-                    int neighborNum = 1; // 该点和它本身距离为0，足够小，故临近点个数初始化为1，子循环遍历从第i+1个开始
-                    for (int j = i + 1; j < dotSampleSize; j++)
-                        if (DISTANCE(this->_sampleR[i], this->_sampleR[j]) < DistanceErr) // 注意：这里的误差是需要调节的，此处草率地预设为 7.0
-                            neighborNum++;
-                    if (double(neighborNum) / dotSampleSize >= nearbyPercentage) // 有超过nearbyPercentage的点聚集在该点的周围，可以认为该点就是“聚点”
-                    {
-                        this->_centerRAvail = true;
-                        this->_centerR = this->_sampleR[i];
-                        noR = false;
-                        break; // 找到R后，跳出循环，进行后续的_roi和_spinDir的寻找
-                    }
-                    if (i == dotSampleSize) // 遍历至此，还不退出，这说明没有点是聚点，所以清空所有样本数据，重测
-                    {
-                        this->_sampleR.clear();
-                        return false;
-                    }
-                }
-            }
-        }
-        return false; // 由于没有centerR时，什么也干不了，故直接返回false
-    }
-
-    // 中心已找到，this->_centerR已初始化
-    if (!noR && unknownDir)
-    {
-        RotatedRect target;
-        if (this->targetDetect(src, target, mode))
-        {
-            this->_angle.push_back(this->getAngle(this->_centerR, target.center, DEG));
-            if (this->_angle.size() >= angleSampleSize)
-            {
-                int n = this->_angle.size();
-                float dAngle = formatAngle(this->_angle[n - 1] - this->_angle[0], DEG); // 这里假设了最后一帧的角度和第一帧的角度相差不超过 180 deg（实际上用的帧数是很少的，结合大风车的速度，不可能到180 deg）。
-                if (dAngle > 0)                                                         // 按参考方向旋转，即顺时针
-                    this->_spinDir = CLOCKWISE;
-                else
-                    this->_spinDir = COUNTERCLOCKWISE;
-            }
-        }
-    }
-
-    // 与判断机关旋转方向是同步执行的
-    if (!noR && noRoi) // 不加else是因为可能在此帧拟合出来了R点，如果加了，在这帧，这个分支就会被跳过
-    {
-        this->_roi = centerRoi(src, this->_centerR);                       // centerRoi一般会成功，但也有可能失败
-        if (this->_roi.width == src.cols && this->_roi.height == src.rows) // 如果出现_roi区域和全图的大小一样，说明这次寻找失败了，设置_roiAvail为false，下次再找
-        {
-            this->_roiAvail = false;
-        }
-        else
-        {
-            this->_roiAvail = true;
-        }
-    }
-
-    if (this->_roiAvail && this->_centerRAvail && this->_spinDir != UNKNOWN)
-        return true;
-    return false;
 }
 
 }
