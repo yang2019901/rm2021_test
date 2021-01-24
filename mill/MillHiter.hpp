@@ -67,15 +67,17 @@ class MillHiter
 {
 protected:
     // 由核心数据成员和辅助数据成员组成，其中核心数据成员一般会在定义其他的成员函数时用到(比如拟合圆的中心_centerR)
+    
     Rect _roi;                    // 核心数据成员：矩形区域 ROI （如果已经找到的话）
     Point2f _centerR;             // 核心数据成员：中心点 R 的坐标 （如果已经找到的话）
+    bool _colorFlag;              // 核心数据成员：要击打的能量机关的颜色
+    int _spinDir;                 // 核心数据成员：能量机关旋转的方向
+    Angle_SpinParams _spinParams; // 核心数据成员：大能量机关中，扇叶角度与时间的函数关系中的两个待定参数 theta(t) = -0.785/1.884*cos(1.884*t+_phase) + 1.305*t + _angle，确定这两个参数即可确定大能量机关特定扇叶的运动方程，扇叶切换时，只需更改_spinParams._angle
+
     vector<Point2f> _sampleR;     // 辅助数据成员：大风车中心点的样本集，取其中的“聚点”作为大风车中心点的坐标
     vector<float> _angle;         // 辅助数据成员：记录前几帧扇叶的角度，以便计算扇叶的旋转方向
     bool _roiAvail;               // 辅助数据成员：ROI是否有效（找到）
     bool _centerRAvail;           // 辅助数据成员：中心点R坐标是否有效（找到）
-    bool _colorFlag;              // 核心数据成员：要击打的能量机关的颜色
-    int _spinDir;                 // 核心数据成员：能量机关旋转的方向
-    Angle_SpinParams _spinParams; // 核心数据成员：大能量机关中，扇叶角度与时间的函数关系中的两个待定参数 theta(t) = -0.785/1.884*cos(1.884*t+_phase) + 1.305*t + _angle，确定这两个参数即可确定大能量机关特定扇叶的运动方程，扇叶切换时，只需更改_spinParams._angle
 
 public:
 /* 取消默认构造函数，如果没有colorFlag（也即不输入打哪种颜色的装甲），就报错，终止运行 */

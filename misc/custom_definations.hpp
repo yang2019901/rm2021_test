@@ -16,9 +16,9 @@
 // #define ROBOT_INFANCY
 #define ROBOT_HERO
 // 选择设备（TX/秒算/PC）
-//#define DEVICE_TX
-//define DEVICE_MANIFOLD
- #define DEVICE_PC
+// #define DEVICE_TX
+// #define DEVICE_MANIFOLD
+#define DEVICE_PC
 
 // 程序文件路径
-#define FILEDIR(fileName) "/home/yangming/文档/rm/rm2021_adv/" #fileName
+#define FILEDIR(fileName) "/home/yangming/Coding/rm/rm2021_adv/" #fileName

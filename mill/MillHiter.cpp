@@ -11,7 +11,7 @@ using namespace chrono;
 
 namespace millhiter{
 
-// returned angle ranging from -PI to PI (aka from -180 deg to 180 deg)
+// returned angle ranging from -PI to PI (AKA from -180 deg to 180 deg)
 float formatAngle(float angle, bool unit)
 {
     if (unit == DEG)
