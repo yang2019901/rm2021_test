@@ -392,7 +392,7 @@ int main() {
     thread collect_thread(ImageCollectThread);
     // thread write_thread(VideoWriteThread);
 
-    collect_thread.join();  // TODO: FIND WHAT'S WRONG IN THIS THREAD
+    collect_thread.join();
     proc_thread.join();
     display_thread.join();
     // write_thread.join();

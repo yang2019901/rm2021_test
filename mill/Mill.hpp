@@ -45,10 +45,7 @@ public:
         circle(img, prePos, 3, Scalar(0, 255, 255), -1);
         if (this->predictConstSpeed(prePos, postPos, dtTime))
             circle(img, postPos, 3, Scalar(0, 255, 255), -1);
-
-        imshow("marked frame", img);
-        if (waitKey(0) == 'q')
-            return;
+        DEBUG_DISPLAY(img);
     }
 };
 
