@@ -370,8 +370,8 @@ bool MillHiter::predictSineSpeed(const Point2f &nowPos, double now, Point2f &pre
         double dt2 = t[0] - t[2];
         double dAngle1 = formatAngle(angles[0] - angles[1], RAD);
         double dAngle2 = formatAngle(angles[0] - angles[2], RAD);
-        double value1 = dAngle1 - c * dt1 / (2 * A * sin(b * dt1 / 2));
-        double value2 = dAngle2 - c * dt2 / (2 * A * sin(b * dt2 / 2));
+        double value1 = (dAngle1 - c * dt1) / (2 * A * sin(b * dt1 / 2));
+        double value2 = (dAngle2 - c * dt2) / (2 * A * sin(b * dt2 / 2));
         if (fabs(value1) > 1 && fabs(value2) > 1)
         {
             t.clear();

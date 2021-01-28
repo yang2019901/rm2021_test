@@ -121,9 +121,12 @@ public:
 /* 这里的函数不对外开放，只是类中其它成员函数实现的工具函数 */
 protected:
     bool targetDetect(Mat roi, RotatedRect &target, int mode);
+    
     double getAngle(const Point2f &center, const Point2f &pos, bool unit = RAD) const;
+    
     double getAngularSpeed(const Point2f &center, const Point2f &nowPos, const Point2f &lastPos, time_t dT, bool unit = RAD) const;
-    // 与实现roi设置有关的函数
+
+    /* 与实现roi设置有关的函数 */
     bool findMillCenter(Mat src, Point2f &center) const;
     RotatedRect armorDetect(Mat src) const;
     Rect centerRoi(Mat src, const Point2f &center);

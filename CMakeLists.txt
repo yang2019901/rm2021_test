@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(RM2021_Adv)
 
-set(OpenCV_DIR "/usr/local/share/OpenCV")
+set(OpenCV_DIR "/usr/local/share/OpenCV")   # <- it's to set the version of opencv which is to be used. 
+                            `               #    delete it if you only have single version. 
 find_package( OpenCV REQUIRED )
 find_package( Threads)
 add_definitions(-w)
