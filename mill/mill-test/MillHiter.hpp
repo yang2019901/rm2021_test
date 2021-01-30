@@ -120,6 +120,14 @@ public:
     // 获取待击打扇叶的中心。成功则返回true，并把中心坐标存到aim中
     bool targetLock(Mat src, Point2f &aim, int mode = 0, int SampleSize = 10, double DistanceErr = 7.0, double nearbyPercentage = 0.8);
 
+    /** tragically, if the camera is dynamic relative to the mill, the following functions may be of help */
+
+    // 初始化函数，专用于能量机关在图像中平移的情况（aka，相机与能量机关有相对运动），此时，只初始化旋转方向
+    bool init2(Mat src, uint angleSampleSize = 5, int mode = 0);
+
+    // 获取待击打扇叶的中心。专用于能量机关在图像中平移的情况。成功则返回true，并把中心坐标存到aim中
+    bool targetLock2(Mat src, Point2f &aim, int mode = 0);
+
 /* 这里的函数不对外开放，只是类中其它成员函数实现的工具函数 */
 protected:
     bool targetDetect(Mat roi, RotatedRect &target, int mode);

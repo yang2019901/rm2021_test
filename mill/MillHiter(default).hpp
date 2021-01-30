@@ -88,14 +88,22 @@ public:
     bool init(Mat src, int mode = 1, uint dotSampleSize = 10, double DistanceErr = 7.0, double nearbyPercentage = 0.8, uint angleSampleSize = 5);
     
     // 实现预测功能的两个函数
-    bool predictConstSpeed(const Point2f &nowPos, Point2f &predPos, double dt);
-    bool predictSineSpeed(const Point2f &nowPos, double now, Point2f &predPos, double dt);
+    bool predictConstSpeed(const Point2f & nowPos, Point2f & predPos, double dt);
+    bool predictSineSpeed(const Point2f & nowPos, double now, Point2f & predPos, double dt);
     
     // 用于更改能量机关的颜色信息
     void setColor(bool colorFlag);
 
     // 获取待击打扇叶的中心。成功则返回true，并把中心坐标存到aim中
-    bool targetLock(Mat src, Point2f &aim, int mode = 0, int SampleSize = 10, double DistanceErr = 7.0, double nearbyPercentage = 0.8);
+    bool targetLock(Mat src, Point2f & aim, int mode = 0, int SampleSize = 10, double DistanceErr = 7.0, double nearbyPercentage = 0.8);
+
+    /** tragically, if the camera is dynamic relative to the mill, the following functions may be of help */
+
+    // 初始化函数，专用于能量机关在图像中平移的情况（aka，相机与能量机关有相对运动），此时，只初始化旋转方向
+    bool init2(Mat src, uint angleSampleSize = 5, int mode = 0);
+
+    // 获取待击打扇叶的中心。专用于能量机关在图像中平移的情况。成功则返回true，并把中心坐标存到aim中
+    bool targetLock2(Mat src, Point2f & aim, int mode = 0);
 
 /* 这里的函数不对外开放，只是类中其它成员函数实现的工具函数 */
 protected:
@@ -139,16 +147,18 @@ bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, 
 {
     if (src.empty())
     {
-        printf("src received by \'targetLock()\' is empty\n");
+        printf("src received by \'init()\' is empty\n");
         return false;
     }
 
     bool noR = !this->_centerRAvail;
     bool unknownDir = (this->_spinDir == UNKNOWN);
     bool noRoi = !this->_roiAvail;
+
     if (noR) // 最初始的状态
     {
         Point2f centerNow;
+
         if (this->findMillCenter(src, centerNow)) // 此时findMillCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
         {
             this->_sampleR.push_back(centerNow);
@@ -175,6 +185,7 @@ bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, 
                 }
             }
         }
+
         return false; // 由于没有centerR时，什么也干不了，故直接返回false
     }
 
@@ -288,8 +299,10 @@ bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, doub
 
     Mat roi = Mat(src, this->_roi);
     RotatedRect target;
+
     if (!this->targetDetect(roi, target, mode))
         return false;
+
     aim.x = target.center.x + this->_roi.x;
     aim.y = target.center.y + this->_roi.y;
     return true;
@@ -398,9 +411,62 @@ bool MillHiter::predictSineSpeed(const Point2f &nowPos, double now, Point2f &pre
     return false;
 }
 
+bool MillHiter::init2(Mat src, uint angleSampleSize, int mode)
+{
+    if (this->_spinDir != UNKNOWN) return true;
+
+    if(!this->findMillCenter(src, this->_centerR))
+    {
+        this->_centerRAvail = false;
+        return false;
+    }
+
+    this->_centerRAvail = true;
+
+    RotatedRect target;
+
+    if (this->targetDetect(src, target, mode))
+    {
+        this->_angle.push_back(getAngle(this->_centerR, target.center, DEG));
+
+        if (this->_angle.size() >= angleSampleSize)
+        {
+            int n = this->_angle.size();
+            float dAngle = formatAngle(this->_angle[n - 1] - this->_angle[0], DEG); // 这里假设了最后一帧的角度和第一帧的角度相差不超过 180 deg（实际上用的帧数是很少的，结合大风车的速度，不可能到180 deg）。
+            if (dAngle > 0)                                                         // 按参考方向旋转，即顺时针
+                this->_spinDir = CLOCKWISE;
+            else
+                this->_spinDir = COUNTERCLOCKWISE;
+            
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool MillHiter::targetLock2(Mat src, Point2f & aim, int mode)
+{
+    if(!this->findMillCenter(src, this->_centerR))
+    {
+        this->_centerRAvail = false;
+        return false;
+    }
+    this->_centerRAvail = true;
+    
+    RotatedRect target;
+
+    if (!this->targetDetect(src, target, mode))
+        return false;
+    
+    aim = target.center;
+    return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////// FUNCITIONS BELOW HAVE BEEN TESTED. NO NEED TO CHECK IF YOU ARE PRETTY SURE THEY HAVE BUGS //////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // 对于wind.mp4 对中心标志R的识别效果很好
 bool MillHiter::findMillCenter(Mat src, Point2f &center) const
 {

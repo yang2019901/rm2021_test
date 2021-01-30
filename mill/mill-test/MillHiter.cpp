@@ -42,7 +42,7 @@ bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, 
 {
     if (src.empty())
     {
-        printf("src received by \'targetLock()\' is empty\n");
+        printf("src received by \'init()\' is empty\n");
         return false;
     }
 
@@ -218,7 +218,6 @@ bool MillHiter::predictConstSpeed(const Point2f &nowPos, Point2f &predPos, doubl
     }
 }
 
-
 // very rough, need test and improvement
 bool MillHiter::predictSineSpeed(const Point2f &nowPos, Point2f &predPos, double gap)
 {
@@ -250,90 +249,66 @@ bool MillHiter::predictSineSpeed(const Point2f &nowPos, Point2f &predPos, double
         std::cout << "something was wrong in MillHiter.predictor ... " << endl;
         exit(0);
     }
+}
 
-    /* TODO:put prediction code of sine-motion here  */
-    // Presumption: theta_k = theta_k-1 + omega_k-1 * dt; omega_k = omega_k-1
-    // Reason: 'dt' is small that omega is nearly a constant.
-    /* static int count = 0;
-    static int stateNum = 4;
-    static int measureNum = 2;
-    static KalmanFilter KF(stateNum, measureNum, 0);
-    static Mat measurement = Mat::zeros(measureNum, 1, CV_32F);
-    static vector<double> angles;
-    static vector<double> t; // to record when each angle in 'angles' was made
-
-    if (count == -1) // meaning that _angle and _phase is found
-    {
-        double predAngle = A * sin(b * (now + dt) + this->_spinParams._phase) + c * (now + dt) + this->_spinParams._angle;
-        predPos.x = this->_centerR.x + (nowPos.x - this->_centerR.x) * cos(predAngle) - (nowPos.y - this->_centerR.y) * sin(predAngle);
-        predPos.y = this->_centerR.y + (nowPos.x - this->_centerR.x) * sin(predAngle) + (nowPos.y - this->_centerR.y) * cos(predAngle);
+bool MillHiter::init2(Mat src, uint angleSampleSize, int mode)
+{
+    if (this->_spinDir != UNKNOWN)
         return true;
+
+    if (!this->findMillCenter(src, this->_centerR))
+    {
+        this->_centerRAvail = false;
+        return false;
     }
 
-    if (count == 0) //初始化
+    this->_centerRAvail = true;
+
+    RotatedRect target;
+
+    if (this->targetDetect(src, target, mode))
     {
-        setIdentity(KF.measurementMatrix);                      // H=[1,0,0,0;0,1,0,0] 测量矩阵
-        setIdentity(KF.processNoiseCov, Scalar::all(1e-5));     // Q 高斯白噪声，单位阵
-        setIdentity(KF.measurementNoiseCov, Scalar::all(1e-1)); // R 高斯白噪声，单位阵
-        setIdentity(KF.errorCovPost, Scalar::all(1));           // P后验误差估计协方差矩阵，初始化为单位阵
-        randn(KF.statePost, Scalar::all(0), Scalar::all(0.1));  // 初始化状态为随机值
-        setIdentity(KF.transitionMatrix);
-    }
-    if (t.size() != 0)
-        KF.transitionMatrix = (Mat_<float>(stateNum, stateNum) << 1, 0, now - t.back(), 0, //A 状态转移矩阵
-                               0, 1, 0, now - t.back(),
-                               0, 0, 1, 0,
-                               0, 0, 0, 1);
-    KF.predict();
-    measurement.at<float>(0) = (float)nowPos.x;
-    measurement.at<float>(1) = (float)nowPos.y;
-    Mat state = KF.correct(measurement);
-    Point2f bestGuess(state.at<float>(0), state.at<float>(1));
+        this->_angle.push_back(getAngle(this->_centerR, target.center, DEG));
 
-    double angle = this->getAngle(this->_centerR, bestGuess, RAD);
-    angles.push_back(angle);
-    t.push_back(now);
-
-    if (angles.size() >= 3)
-    {
-        /* TODO: solve equation to get the theta(t) function */
-
-        // use its spining rule, no systematic error
-/*         double dt1 = t[0] - t[1];
-        double dt2 = t[0] - t[2];
-        double dAngle1 = formatAngle(angles[0] - angles[1], RAD);
-        double dAngle2 = formatAngle(angles[0] - angles[2], RAD);
-        double value1 = dAngle1 - c * dt1 / (2 * A * sin(b * dt1 / 2));
-        double value2 = dAngle2 - c * dt2 / (2 * A * sin(b * dt2 / 2));
-        if (fabs(value1) > 1 && fabs(value2) > 1)
+        if (this->_angle.size() >= angleSampleSize)
         {
-            t.clear();
-            angles.clear();
-            printf("Error reported from \'predictSineSpeed()\' in MillHiter class: invalid value of sine. cannot be solved\n");
-            return false;
+            int n = this->_angle.size();
+            float dAngle = formatAngle(this->_angle[n - 1] - this->_angle[0], DEG); // 这里假设了最后一帧的角度和第一帧的角度相差不超过 180 deg（实际上用的帧数是很少的，结合大风车的速度，不可能到180 deg）。
+            if (dAngle > 0)                                                         // 按参考方向旋转，即顺时针
+                this->_spinDir = CLOCKWISE;
+            else
+                this->_spinDir = COUNTERCLOCKWISE;
+
+            return true;
         }
-
-        if (value1 < value2) // TODO: check whether this judging method will cause bug.
-            this->_spinParams._phase = -(-acos(value1) - b * (t[0] + t[1]) / 2);
-        else
-            this->_spinParams._phase = -(acos(value1) - b * (t[0] + t[1]) / 2);
-
-        this->_spinParams._angle = angles[0] - c * t[0] - A * sin(b * t[0] + this->_spinParams._phase);
-        double predAngle = A * sin(b * (now + dt) + this->_spinParams._phase) + c * (now + dt) + this->_spinParams._angle;
-        predPos.x = this->_centerR.x + (nowPos.x - this->_centerR.x) * cos(predAngle) - (nowPos.y - this->_centerR.y) * sin(predAngle);
-        predPos.y = this->_centerR.y + (nowPos.x - this->_centerR.x) * sin(predAngle) + (nowPos.y - this->_centerR.y) * cos(predAngle);
-
-        count = -1;
-        return true;
     }
 
-    count++;
-    return false; */
+    return false;
+}
+
+bool MillHiter::targetLock2(Mat src, Point2f &aim, int mode)
+{
+    printf("this is from targetLock2\n");
+    if (!this->findMillCenter(src, this->_centerR))
+    {
+        this->_centerRAvail = false;
+        return false;
+    }
+    this->_centerRAvail = true;
+
+    RotatedRect target;
+
+    if (!this->targetDetect(src, target, mode))
+        return false;
+
+    aim = target.center;
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////// FUNCITIONS BELOW HAVE BEEN TESTED. NO NEED TO CHECK IF YOU ARE PRETTY SURE THEY HAVE BUGS //////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // 对于wind.mp4 对中心标志R的识别效果很好
 bool MillHiter::findMillCenter(Mat src, Point2f &center) const
 {
