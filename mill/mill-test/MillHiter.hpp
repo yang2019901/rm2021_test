@@ -18,6 +18,8 @@ using namespace chrono;
 
 /* +++++++++++++ */
 #include "SinePredictor.hpp"
+
+using namespace Sine;
 /* +++++++++++++ */
 
 namespace millhiter {

@@ -79,7 +79,7 @@ class GimbalContrl
 
   //! Initial value
   float init_v_;
-  float init_k_;
+  float init_k_;    // <- init_k = k / m    'k' is the coefficent in f = kv^2; 'm' is the mass of the projectile
 
 };
 
