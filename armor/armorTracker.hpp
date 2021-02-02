@@ -8,13 +8,13 @@
 
 #pragma once
 #include <opencv2/opencv.hpp>
-#include "util.hpp"
-#include "configurations.hpp"
-#include "camview.hpp"
-#include "predictor.hpp"
+#include "../misc/util.hpp"
+#include "../misc/configurations.hpp"
+#include "../misc/camview.hpp"
+#include "../misc/predictor.hpp"
 #include "armorDetector.hpp"
-#include "dnnManager.hpp"
-#include "trackerMedianFlow.hpp"
+#include "../misc/dnnManager.hpp"
+#include "../misc/trackerMedianFlow.hpp"
 //#include "anti_top.hpp"
 
 using namespace cv;

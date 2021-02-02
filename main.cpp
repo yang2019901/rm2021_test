@@ -25,18 +25,19 @@
  ***/
 
 
-#include "custom_definations.hpp"
+#include "misc/custom_definations.hpp"
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include "armorDetector.hpp"
-#include "serial.hpp"
+#include "armor/armorDetector.hpp"
+#include "misc/serial.hpp"
 #include <thread>
-#include "camview.hpp"         
+#include "misc/camview.hpp"         
 #include <unistd.h>
-#include "armorTracker.hpp"
-#include "armorHiter.hpp"
-#include "dnnManager.hpp"
-#include "Mill.hpp"
+#include "armor/armorTracker.hpp"
+#include "armor/armorHiter.hpp"
+#include "misc/dnnManager.hpp"
+#include "mill/Mill.hpp"
+
 using namespace cv;
 using namespace std;
 

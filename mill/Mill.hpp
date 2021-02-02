@@ -1,9 +1,9 @@
 #pragma once
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include "util.hpp"
-#include "configurations.hpp"
-#include "serial.hpp"
+#include "../misc/util.hpp"
+#include "../misc/configurations.hpp"
+#include "../misc/serial.hpp"
 #include "millhiter/MillHiter.hpp"
 
 using namespace std;

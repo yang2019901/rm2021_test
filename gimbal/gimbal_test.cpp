@@ -8,7 +8,7 @@ using namespace cv;
 
 int main()
 {
-    fstream fin("/home/yangming/Coding/rm/rm2021_adv/mill/config.txt");
+    fstream fin("config.txt");
 
     GimbalContrl infancy;
     infancy.Init(0,0,0,0,0,15,0.1);

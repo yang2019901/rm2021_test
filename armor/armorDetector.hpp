@@ -19,8 +19,8 @@
 #include <cmath>
 #include <opencv2/opencv.hpp>
 #include <iostream>
-#include "util.hpp"
-#include "configurations.hpp"
+#include "../misc/util.hpp"
+#include "../misc/configurations.hpp"
 #include <cmath>
 using namespace std;
 using namespace cv;
