@@ -2,7 +2,7 @@ CC = g++
 
 obj = gimbal_test.o gimbal_control.o
 
-opt = -O3
+opt = -O1
 
 cflags = -I /usr/local/include \
 -I /usr/local/include/opencv \

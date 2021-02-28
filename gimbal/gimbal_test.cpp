@@ -11,7 +11,7 @@ int main()
     fstream fin("config.txt");
 
     GimbalContrl infancy;
-    infancy.Init(0,0,0,0,0,15,0.1);
+    infancy.Init(0,0,0,0,0,15,0);
     
     float pitch,yaw;
     float x,y,z;

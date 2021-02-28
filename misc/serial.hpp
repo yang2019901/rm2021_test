@@ -10,7 +10,7 @@
 
 #define UINT unsigned int
 
-#include<string>
+#include <string>
 #include <unistd.h>     /*Unix标准函数定义*/
 #include <fcntl.h>      /*文件控制定义*/
 #include <termios.h>   /*PPSIX终端控制定义*/

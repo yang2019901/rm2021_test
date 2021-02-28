@@ -22,8 +22,12 @@
 namespace roborts_detection{
 
 const double PI = 3.1415926535;
-const float GRAVITY = 9.78;
+const float GRAVITY = 9.80;
 
+/**
+ * @brief coordinate system declaration:
+ *        
+ */
 
 /**
  * @brief The class can make a transformation: the 3D position of enemy -->  pitch,yaw angle of gimbal.

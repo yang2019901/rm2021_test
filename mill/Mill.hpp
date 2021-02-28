@@ -45,6 +45,7 @@ public:
         circle(img, prePos, 3, Scalar(0, 255, 255), -1);
         if (this->predictConstSpeed(prePos, postPos, dtTime))
             circle(img, postPos, 3, Scalar(0, 255, 255), -1);
+            
         DEBUG_DISPLAY(img);
     }
 };

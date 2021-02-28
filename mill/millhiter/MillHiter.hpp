@@ -85,29 +85,29 @@ protected:
     // Angle_SpinParams _spinParams; // 核心数据成员：大能量机关中，扇叶角度与时间的函数关系中的两个待定参数 theta(t) = -0.785/1.884*cos(1.884*t+_phase) + 1.305*t + _angle，确定这两个参数即可确定大能量机关特定扇叶的运动方程，扇叶切换时，只需更改_spinParams._angle
     
     /* ++++++++++++ */
-    Sine::SinePredictor preditor; // 预测器，不写成类的话很麻烦
+    Sine::SinePredictor predictor; // 预测器，不写成类的话很麻烦
     size_t frame_counter;         // 记录参数修正次数
     /* ++++++++++++ */
 
 public:
     /* 取消默认构造函数，如果没有colorFlag（也即不输入打哪种颜色的装甲），就报错，终止运行 */
     MillHiter(bool colorFlag)
-    : _colorFlag(colorFlag), _roiAvail(false), _centerRAvail(false), _spinDir(UNKNOWN)
+    : _colorFlag(colorFlag), _roiAvail(false), _centerRAvail(false), _spinDir(UNKNOWN), frame_counter(0)
     {
         /* ++++++++++++++++++++ */
-        this->preditor.init_filter_variance(0.1, 0.01);
+        this->predictor.init_filter_variance(0.1, 0.01);
         /* ++++++++++++++++++++ */
     }
     MillHiter(Rect roi, Point2f centerR, bool colorFlag)
-    : _roi(roi), _centerR(centerR), _roiAvail(true), _centerRAvail(true), _colorFlag(colorFlag), _spinDir(UNKNOWN)
+    : _roi(roi), _centerR(centerR), _roiAvail(true), _centerRAvail(true), _colorFlag(colorFlag), _spinDir(UNKNOWN), frame_counter(0)
     {
         /* ++++++++++++++++++++ */
-        this->preditor.init_filter_variance(0.1, 0.01);
+        this->predictor.init_filter_variance(0.1, 0.01);
         /* ++++++++++++++++++++ */
     };
 
     // 实现初始化功能的函数，初始化完成后，大风车的中心_centerR，大风车的旋转方向_spinDir和ROI区域_roi确定，而大能量机关的旋转方向不能确定，需要另行初始化！
-    bool init(Mat src, int mode = 1, uint dotSampleSize = 10, double DistanceErr = 7.0, double nearbyPercentage = 0.8, uint angleSampleSize = 5);
+    bool init(Mat src, int mode = 1, uint dotSampleSize = 5, double DistanceErr = 7.0, double nearbyPercentage = 0.8, uint angleSampleSize = 5);
     
     // 实现预测功能的两个函数
     bool predictConstSpeed(const Point2f &nowPos, Point2f &predPos, double dt);
@@ -119,6 +119,7 @@ public:
 
     // 获取待击打扇叶的中心。成功则返回true，并把中心坐标存到aim中
     bool targetLock(Mat src, Point2f &aim, int mode = 0, int SampleSize = 10, double DistanceErr = 7.0, double nearbyPercentage = 0.8);
+
 
     /** tragically, if the camera is dynamic relative to the mill, the following functions may be of help */
 

@@ -224,28 +224,43 @@ bool MillHiter::predictSineSpeed(const Point2f &nowPos, Point2f &predPos, double
     /* 计算nowPos对应的角度 */
     const double angle = this->getAngle(this->_centerR, nowPos, RAD);
 
+    /* change gap's unit from sec to millisec */
+    gap /= 1000;  
+
     /* 如果还在修正模式 */
-    if (this->frame_counter < 100)
+    if (this->frame_counter < 50)
     {
         /* get_time()返回的是从1970...到现在经过的微秒数 */
-        this->preditor.feed_angle(angle, get_time());
+        this->predictor.feed_angle(this->_spinDir * angle, get_time());
         this->frame_counter++;
         return false;
     }
-    else if (this->preditor.is_ok())
+    else if (this->predictor.is_ok())
     {
         /* 进行预测 */
-        double angle_predict = this->preditor.predict(get_time(), gap);
+        Sys_time now = get_time();
+        double angle_expect_now = this->predictor.predict(now, 0);
+        double angle_expect_gap = this->predictor.predict(now, gap);
+        double dangle = angle_expect_gap - angle_expect_now;
+        dangle *= this->_spinDir;
+
+        /** theoretically, angle-real and angle-expect should be very close at the first place 
+         *  if not, it turns out we got a bad spining equation and something strange must happen */ 
+
+        // TODO: check whether it works well and if it does, delete the "printf" line 
+        printf("angle-real: %f, angle-expect: %f\n", angle, angle_expect_now);
+
         /* 存入结果 */
         predPos.x = this->_centerR.x + 
-                    (nowPos.x - this->_centerR.x) * cos(angle_predict) - (nowPos.y - this->_centerR.y) * sin(angle_predict);
+                    (nowPos.x - this->_centerR.x) * cos(dangle) - (nowPos.y - this->_centerR.y) * sin(dangle);
         predPos.y = this->_centerR.y + 
-                    (nowPos.x - this->_centerR.x) * sin(angle_predict) + (nowPos.y - this->_centerR.y) * cos(angle_predict);
+                    (nowPos.x - this->_centerR.x) * sin(dangle) + (nowPos.y - this->_centerR.y) * cos(dangle);
+
         return true;
     }
     else
     {
-        /* 如果100帧后还不能预测，就是有问题了 */
+        /* 如果50帧后还不能预测，就是有问题了 */
         std::cout << "something was wrong in MillHiter.predictor ... " << endl;
         exit(0);
     }
@@ -288,7 +303,6 @@ bool MillHiter::init2(Mat src, uint angleSampleSize, int mode)
 
 bool MillHiter::targetLock2(Mat src, Point2f &aim, int mode)
 {
-    printf("this is from targetLock2\n");
     if (!this->findMillCenter(src, this->_centerR))
     {
         this->_centerRAvail = false;
@@ -489,12 +503,12 @@ bool MillHiter::targetDetect(Mat roi, RotatedRect &target, int mode)
         cvtColor(roi, gray, COLOR_BGR2GRAY);           // around 1ms sometimes 1.5ms
         threshold(gray, gray, 80, 255, THRESH_BINARY); // no time   // TODO: 灰度的阈值可能要调
         // auto end = steady_clock::now();
-
+        // imshow("after threshold", gray);
         dilate(gray, gray, Mat()); // sometimes 1ms about these two operations
         dilate(gray, gray, Mat());
 
         floodFill(gray, Point2f(5, 50), Scalar(255), 0, FLOODFILL_FIXED_RANGE); // around 1ms
-
+        // imshow("after floodfill",gray);
         threshold(gray, gray, 80, 255, THRESH_BINARY_INV);
         vector<vector<Point>> contours;
         findContours(gray, contours, RETR_LIST, CHAIN_APPROX_NONE); // sometimes 1ms
@@ -512,7 +526,7 @@ bool MillHiter::targetDetect(Mat roi, RotatedRect &target, int mode)
             rrect.points(vertices);
 
             float aim = rrect.size.height / rrect.size.width;
-            if (aim > 1.7 && aim < 2.6)
+            if (aim > 1.4 && aim < 2.6)  // TODO：长宽比可能也需要调
             {
                 float middle = 100000;
                 for (size_t j = 1; j < contours.size(); j++)
@@ -520,7 +534,7 @@ bool MillHiter::targetDetect(Mat roi, RotatedRect &target, int mode)
 
                     vector<Point> pointsA;
                     double area = contourArea(contours[j]);
-                    if (area < 50 || 1e4 < area) // TODO：长宽比可能也需要调
+                    if (area < 50 || 1e4 < area) 
                         continue;
 
                     pointsA = contours[j];
