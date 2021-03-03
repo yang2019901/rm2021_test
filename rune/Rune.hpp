@@ -4,33 +4,33 @@
 #include "../misc/util.hpp"
 #include "../misc/configurations.hpp"
 #include "../misc/serial.hpp"
-#include "millhiter/MillHiter.hpp"
+#include "runehiter/RuneHiter.hpp"
 
 using namespace std;
 using namespace cv;
-using namespace millhiter;
-// mill id为4
-// MillBase is no more than a socket(AKA, a modem). It successes universal API "Update()", in which mill-hitting is fulfilled.
-class MillBase : public ModuleBase{
+using namespace runehiter;
+// rune id为4
+// RuneBase is no more than a socket(AKA, a modem). It successes universal API "Update()", in which rune-hitting is fulfilled.
+class RuneBase : public ModuleBase{
 public:
-    MillBase(SerialManager *serial) : ModuleBase(4), _serial(serial) {};
+    RuneBase(SerialManager *serial) : ModuleBase(4), _serial(serial) {};
 protected:
     SerialManager *_serial;
 };
 
-// On one hand, GeneralMillHiter is designed to be a socket with API "Update()" for external calling so it belongs to MillBase and successes MillBase. 
-// On the other hand, it is a special socket with mill-hitting abilities so it belong to MillHiter class and success MillHiter.
-class GeneralMillHiter : public MillBase, public MillHiter
+// On one hand, GeneralRuneHiter is designed to be a socket with API "Update()" for external calling so it belongs to RuneBase and successes RuneBase. 
+// On the other hand, it is a special socket with rune-hitting abilities so it belong to RuneHiter class and success RuneHiter.
+class GeneralRuneHiter : public RuneBase, public RuneHiter
 {
 public:
-    GeneralMillHiter(SerialManager * serial) : MillBase(serial), MillHiter(BLUE)
+    GeneralRuneHiter(SerialManager * serial) : RuneBase(serial), RuneHiter(BLUE)
     {
         if (2 - ElectronicControlParams::teamInfo == ARMOR_BLUE)
             this->setColor(BLUE);
         else if (2 - ElectronicControlParams::teamInfo == ARMOR_RED)
             this->setColor(RED);
         else 
-            printf("the color paras of \'MillHiter()\' is wrong\n");
+            printf("the color paras of \'RuneHiter()\' is wrong\n");
         return ;
     };
     void Update(ImageData &frame, float dtTime)
@@ -50,8 +50,8 @@ public:
     }
 };
 
-class InfancyMillHiter : public GeneralMillHiter
+class InfancyRuneHiter : public GeneralRuneHiter
 {
 public:
-    InfancyMillHiter(SerialManager *serial) : GeneralMillHiter(serial) {}
+    InfancyRuneHiter(SerialManager *serial) : GeneralRuneHiter(serial) {}
 };

@@ -36,7 +36,7 @@
 #include "armor/armorTracker.hpp"
 #include "armor/armorHiter.hpp"
 #include "misc/dnnManager.hpp"
-#include "mill/Mill.hpp"
+#include "rune/Rune.hpp"
 
 using namespace cv;
 using namespace std;
@@ -45,7 +45,7 @@ using namespace std;
 void ProcessFullFunction(ImageData &frame);
 void ProcessAlgorithmFunction(ImageData &frame);
 void ArmorDetectDebug(ImageData &frame);
-void MillDetectDebug(ImageData &frame);
+void RuneDetectDebug(ImageData &frame);
 double lastt = getTickCount(), curt = lastt,checkpoint_time = lastt,dtTime = 0;
 int fps  = 0,frames = 0;
 
@@ -126,7 +126,7 @@ ArmorTrackerBase *armor_tracker_ptr = NULL;
 ArmorHiter *armor_hiter_ptr = NULL;
 DnnManager *dnn_manager_ptr = NULL;
 
-MillBase * mill_hiter_ptr = NULL;
+RuneBase * rune_hiter_ptr = NULL;
 
 
 Point2f res;
@@ -215,8 +215,8 @@ void ImageProcessThread()
     InfancyArmorHiter infancyHiter(serial_ptr,armor_tracker_ptr);
     armor_hiter_ptr = &infancyHiter;
 
-    InfancyMillHiter infancy_mill_Hiter(serial_ptr);
-    mill_hiter_ptr = &infancy_mill_Hiter;
+    InfancyRuneHiter infancy_rune_Hiter(serial_ptr);
+    rune_hiter_ptr = &infancy_rune_Hiter;
 
  #elif defined ROBOT_HERO
     HeroArmorHiter heroHiter(serial_ptr,armor_tracker_ptr);
@@ -227,7 +227,7 @@ void ImageProcessThread()
     //压入2个模块 装甲识别 2； 大风车 4；
     serial_ptr->RegisterModule(armor_hiter_ptr);    //将模块push进串口管理器
 #ifdef ROBOT_INFANCY
-    serial_ptr->RegisterModule(mill_hiter_ptr);
+    serial_ptr->RegisterModule(rune_hiter_ptr);
 #endif
 
     int lastIndex = 0;
@@ -425,8 +425,8 @@ void ProcessAlgorithmFunction(ImageData &frame)
         case 4:  // armor detect
             ArmorDetectDebug(frame);
             break;
-        case 5: //mill detect
-            MillDetectDebug(frame);
+        case 5: //rune detect
+            RuneDetectDebug(frame);
             break;
     }
 }
@@ -436,7 +436,7 @@ void ArmorDetectDebug(ImageData &frame)
     res = armor_tracker_ptr->UpdateFrame(frame,dtTime)*0.3;
 }
 
-void MillDetectDebug(ImageData &frame)
+void RuneDetectDebug(ImageData &frame)
 {
-    mill_hiter_ptr->Update(frame,dtTime);
+    rune_hiter_ptr->Update(frame,dtTime);
 }

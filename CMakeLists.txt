@@ -9,7 +9,7 @@ add_definitions(-w)
 set(CMAKE_CXX_STANDARD 11)
 include_directories(./misc)
 include_directories(./armor) 
-include_directories(./mill) 
+include_directories(./rune) 
 include_directories(./gimbal)
 add_executable(RM2021_Adv main.cpp )
 

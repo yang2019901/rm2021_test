@@ -3,13 +3,13 @@
 #include <vector>
 #include <cmath>
 #include <chrono>
-#include "MillHiter.hpp"
+#include "RuneHiter.hpp"
 
 using namespace std;
 using namespace cv;
 using namespace chrono;
 
-namespace millhiter{
+namespace runehiter{
 
 // returned angle ranging from -PI to PI (aka from -180 deg to 180 deg)
 float formatAngle(float angle, bool unit)
@@ -83,7 +83,7 @@ void GimbalController::transform(Point3f targetPos, float& yaw_dst, float& pitch
 
 
 // Usually, default params work well and needless to set
-bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, double nearbyPercentage, uint angleSampleSize)
+bool RuneHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, double nearbyPercentage, uint angleSampleSize)
 {
     if (src.empty())
     {
@@ -97,7 +97,7 @@ bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, 
     if (noR) // 最初始的状态
     {
         Point2f centerNow;
-        if (this->findMillCenter(src, centerNow)) // 此时findMillCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
+        if (this->findRuneCenter(src, centerNow)) // 此时findRuneCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
         {
             this->_sampleR.push_back(centerNow);
             if (_sampleR.size() >= dotSampleSize) // 如果_sample.size() 已经达到SampleSize（取了一个不大不小的值 10 作为样本容量的默认值），就开始拟合中心。策略：把偏差过大的点舍去，取“聚点”
@@ -164,11 +164,11 @@ bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, 
     return false;
 }
 
-void MillHiter::setColor(bool colorFlag) { this->_colorFlag = colorFlag; }
+void RuneHiter::setColor(bool colorFlag) { this->_colorFlag = colorFlag; }
 
-// time cost: 1-3 milliseconds
+// time cost: 1-3 runeiseconds
 // @params aim: coordinate of the target will be stored here!
-bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, double DistanceErr, double nearbyPercentage)
+bool RuneHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, double DistanceErr, double nearbyPercentage)
 {
     // preprocess:
     if (src.empty())
@@ -185,7 +185,7 @@ bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, doub
     else if (noRoi && noR) // 最初始的状态
     {
         Point2f centerNow;
-        if (this->findMillCenter(src, centerNow)) // 此时findMillCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
+        if (this->findRuneCenter(src, centerNow)) // 此时findRuneCenter 找到了这帧的 R，把该组数据压入 _sampleR中作为有效数据
         {
             this->_sampleR.push_back(centerNow);
             if (_sampleR.size() < SampleSize)
@@ -215,7 +215,7 @@ bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, doub
                 }
             }
         }
-        else // 说明 findMillCenter 失败了，此时不改变 _sampleR，将roi设置为全图（即在全图中寻找）
+        else // 说明 findRuneCenter 失败了，此时不改变 _sampleR，将roi设置为全图（即在全图中寻找）
         {
             this->_roi = Rect(0, 0, src.cols, src.rows);
         }
@@ -244,8 +244,8 @@ bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, doub
 }
 
 // @param prePos is the center of target region at this moment.
-// @param dt is measured by milliseconds
-bool MillHiter::predictConstSpeed(const Point2f &nowPos, Point2f &predPos, double dt)
+// @param dt is measured by runeiseconds
+bool RuneHiter::predictConstSpeed(const Point2f &nowPos, Point2f &predPos, double dt)
 {
 
     /*  dt: ms  CONSTSPEED: deg/s  */
@@ -264,12 +264,12 @@ bool MillHiter::predictConstSpeed(const Point2f &nowPos, Point2f &predPos, doubl
 }
 
 // very rough, need test and improvement
-bool MillHiter::predictSineSpeed(const Point2f &nowPos, Point2f &predPos, double gap)
+bool RuneHiter::predictSineSpeed(const Point2f &nowPos, Point2f &predPos, double gap)
 {
     /* 计算nowPos对应的角度 */
     const double angle = this->getAngle(this->_centerR, nowPos, RAD);
 
-    /* change gap's unit from sec to millisec */
+    /* change gap's unit from sec to runeisec */
     gap /= 1000;  
 
     /* 如果还在修正模式 */
@@ -306,17 +306,17 @@ bool MillHiter::predictSineSpeed(const Point2f &nowPos, Point2f &predPos, double
     else
     {
         /* 如果50帧后还不能预测，就是有问题了 */
-        std::cout << "something was wrong in MillHiter.predictor ... " << endl;
+        std::cout << "something was wrong in RuneHiter.predictor ... " << endl;
         exit(0);
     }
 }
 
-bool MillHiter::init2(Mat src, uint angleSampleSize, int mode)
+bool RuneHiter::init2(Mat src, uint angleSampleSize, int mode)
 {
     if (this->_spinDir != UNKNOWN)
         return true;
 
-    if (!this->findMillCenter(src, this->_centerR))
+    if (!this->findRuneCenter(src, this->_centerR))
     {
         this->_centerRAvail = false;
         return false;
@@ -346,9 +346,9 @@ bool MillHiter::init2(Mat src, uint angleSampleSize, int mode)
     return false;
 }
 
-bool MillHiter::targetLock2(Mat src, Point2f &aim, int mode)
+bool RuneHiter::targetLock2(Mat src, Point2f &aim, int mode)
 {
-    if (!this->findMillCenter(src, this->_centerR))
+    if (!this->findRuneCenter(src, this->_centerR))
     {
         this->_centerRAvail = false;
         return false;
@@ -369,11 +369,11 @@ bool MillHiter::targetLock2(Mat src, Point2f &aim, int mode)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // 对于wind.mp4 对中心标志R的识别效果很好
-bool MillHiter::findMillCenter(Mat src, Point2f &center) const
+bool RuneHiter::findRuneCenter(Mat src, Point2f &center) const
 {
     if (src.empty())
     {
-        printf("src received by 'findMillCenter()' is empty\n");
+        printf("src received by 'findRuneCenter()' is empty\n");
         return false;
     }
     vector<Mat> splited;
@@ -418,7 +418,7 @@ bool MillHiter::findMillCenter(Mat src, Point2f &center) const
 }
 
 // trimRegion 对于wind1.jpg生效
-void MillHiter::trimRegion(Mat src, Rect &region) const
+void RuneHiter::trimRegion(Mat src, Rect &region) const
 {
     region.x = max(0, region.x);
     region.y = max(0, region.y);
@@ -429,7 +429,7 @@ void MillHiter::trimRegion(Mat src, Rect &region) const
 
 // 对于wind.mp4 绝大多数帧识别良好，除了用手遮挡的那几帧。同时需要注意，它不能区分已击打和未击打的装甲板
 // 策略：Accuracy first!
-RotatedRect MillHiter::armorDetect(Mat src) const
+RotatedRect RuneHiter::armorDetect(Mat src) const
 {
     if (src.empty())
     {
@@ -474,7 +474,7 @@ RotatedRect MillHiter::armorDetect(Mat src) const
 }
 
 // 对于wind.mp4 roi卡范围的效果很好
-Rect MillHiter::getRoi(Mat src, const Point2f &center)
+Rect RuneHiter::getRoi(Mat src, const Point2f &center)
 {
     if (src.empty())
     {
@@ -497,7 +497,7 @@ Rect MillHiter::getRoi(Mat src, const Point2f &center)
 // 策略：Efficiency first!
 // mode=0:使用内嵌矩形的方式进行识别。注：预处理图片使用红蓝通道相减，因此ColorFlag的值很重要。（部分）特点：矩形区域中心点略有偏移
 // mode=1:使用面积比，距离的方式进行识别。注：预处理图片使用亮度（装甲的灯条亮度显著高于周围环境），与ColorFlag的值无关。 （部分）特点：矩形区域中心点几乎无偏移
-bool MillHiter::targetDetect(Mat roi, RotatedRect &target, int mode)
+bool RuneHiter::targetDetect(Mat roi, RotatedRect &target, int mode)
 {
     if (roi.empty())
     {
@@ -616,7 +616,7 @@ bool MillHiter::targetDetect(Mat roi, RotatedRect &target, int mode)
 }
 
 // return degree angle (ranging from -180 to +180)
-inline double MillHiter::getAngle(const Point2f &center, const Point2f &pos, bool unit) const
+inline double RuneHiter::getAngle(const Point2f &center, const Point2f &pos, bool unit) const
 {
     if (unit == RAD)
         return atan2(pos.y - center.y, pos.x - center.x);
@@ -625,8 +625,8 @@ inline double MillHiter::getAngle(const Point2f &center, const Point2f &pos, boo
 }
 
 // calculate mean angular speed. when "dT" is marginal, it can be used as instant angular velocity
-// if returned value is plus, the mill rotates counter-clockwise. if minus, it rotates clockwise.
-double MillHiter::getAngularSpeed(const Point2f &center, const Point2f &nowPos, const Point2f &lastPos, time_t dT, bool unit) const
+// if returned value is plus, the rune rotates counter-clockwise. if minus, it rotates clockwise.
+double RuneHiter::getAngularSpeed(const Point2f &center, const Point2f &nowPos, const Point2f &lastPos, time_t dT, bool unit) const
 {
     double AngularSpeed;
     double dAngle = this->getAngle(center, nowPos, DEG) - this->getAngle(center, lastPos, DEG);

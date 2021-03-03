@@ -24,18 +24,18 @@ cflags = -std=c++11 \
 # linking "pthread" manually is needed to solve error about "undefined reference to symbol 'pthread_create@@GLIBC_2.2.5'"
 # that error occurs because pthread is not a default library in Linux
 
-obj = mill/millhiter/kalman.o \
-mill/millhiter/MillHiter.o \
-mill/millhiter/SinePredictor.o \
-mill/millhiter/sys_time.o \
-mill/millhiter/tool.o 
+obj = rune/runehiter/kalman.o \
+rune/runehiter/RuneHiter.o \
+rune/runehiter/SinePredictor.o \
+rune/runehiter/sys_time.o \
+rune/runehiter/tool.o 
 
 opt = -O3
 
 rm2021_adv: main.o $(obj)
 	$(CC) main.o $(obj) -o rm2021_adv $(cflags)
 	rm *.o
-	rm mill/millhiter/*.o
+	rm rune/runehiter/*.o
 
 main.o: main.cpp
 	$(CC) -c main.cpp -o main.o $(cflags) $(opt)

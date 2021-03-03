@@ -1,11 +1,11 @@
 /* 
-*  namespace "millhiter" mainly contains MillHiter class and designed to fulfill mill-hitting ability as its name goes.
-*  It is deprived from Mill.hpp, thus independent, and focused on mill-hitting, the ability part.
+*  namespace "runehiter" mainly contains RuneHiter class and designed to fulfill rune-hitting ability as its name goes.
+*  It is deprived from Rune.hpp, thus independent, and focused on rune-hitting, the ability part.
 *  Due to its independency, it can be relatively easy to add functions to this class and namespace.
 */
 
-#ifndef MILLHITER_HPP
-#define MILLHITER_HPP
+#ifndef RUNEHITER_HPP
+#define RUNEHITER_HPP
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -22,7 +22,7 @@ using namespace chrono;
 using namespace Sine;
 /* +++++++++++++ */
 
-namespace millhiter {
+namespace runehiter {
 
 /* #ifndef SINE_SPIN_PARAMS
 #define SINE_SPIN_PARAMS
@@ -93,7 +93,7 @@ public:
 
 // NOTE: ROI算法的前提是相机参考系与大符参考系完全相对静止，这就要求不能使用安装在枪管上的相机，不然图片会随之而动，导致ROI设置失败
 // TODO: 增加斜侧向打符的功能，主要用于干扰对方（想法：仿射变换 or 透视变换）
-class MillHiter
+class RuneHiter
 {
 protected:
     // 由核心数据成员和辅助数据成员组成，其中核心数据成员一般会在定义其他的成员函数时用到(比如拟合圆的中心_centerR)
@@ -119,21 +119,21 @@ public:
 
 public:
     /* 取消默认构造函数，如果没有colorFlag（也即不输入打哪种颜色的装甲），就报错，终止运行 */
-    MillHiter(bool colorFlag)
+    RuneHiter(bool colorFlag)
     : _colorFlag(colorFlag), _roiAvail(false), _centerRAvail(false), _spinDir(UNKNOWN), frame_counter(0)
     {
         /* ++++++++++++++++++++ */
         this->predictor.init_filter_variance(0.1, 0.01);
         /* ++++++++++++++++++++ */
     }
-    MillHiter(Rect roi, Point2f centerR, bool colorFlag)
+    RuneHiter(Rect roi, Point2f centerR, bool colorFlag)
     : _roi(roi), _centerR(centerR), _roiAvail(true), _centerRAvail(true), _colorFlag(colorFlag), _spinDir(UNKNOWN), frame_counter(0)
     {
         /* ++++++++++++++++++++ */
         this->predictor.init_filter_variance(0.1, 0.01);
         /* ++++++++++++++++++++ */
     };
-    MillHiter(bool colorFlag, float v, float k, float m)
+    RuneHiter(bool colorFlag, float v, float k, float m)
     : _colorFlag(colorFlag), _roiAvail(false), _centerRAvail(false), _spinDir(UNKNOWN), frame_counter(0), gimbal(v, k, m)
     {
         this->predictor.init_filter_variance(0.1, 0.01);
@@ -153,7 +153,7 @@ public:
     bool targetLock(Mat src, Point2f &aim, int mode = 0, int SampleSize = 10, double DistanceErr = 7.0, double nearbyPercentage = 0.8);
 
 
-    /** tragically, if the camera is dynamic relative to the mill, the following functions may be of help */
+    /** tragically, if the camera is dynamic relative to the rune, the following functions may be of help */
 
     // 初始化函数，专用于能量机关在图像中平移的情况（aka，相机与能量机关有相对运动），此时，只初始化旋转方向
     bool init2(Mat src, uint angleSampleSize = 5, int mode = 0);
@@ -170,9 +170,9 @@ protected:
     double getAngularSpeed(const Point2f &center, const Point2f &nowPos, const Point2f &lastPos, time_t dT, bool unit = RAD) const;
 
     /* 与实现roi设置有关的函数 */
-    bool findMillCenter(Mat src, Point2f &center) const;
+    bool findRuneCenter(Mat src, Point2f &center) const;
     RotatedRect armorDetect(Mat src) const;
-    Rect getRoi(Mat src, const Point2f &center);  // get ROI by center position of the mill
+    Rect getRoi(Mat src, const Point2f &center);  // get ROI by center position of the rune
     void trimRegion(Mat src, Rect &region) const;
 };
 
