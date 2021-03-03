@@ -37,6 +37,51 @@ float formatAngle(float angle, bool unit)
     return angle;
 }
 
+void GimbalController::init(float v, float k, float m)
+{
+    this->_v = v;
+    this->_k = k;
+    this->_m = m;
+    return;
+}
+
+float GimbalController::bulletModel(float horizontal_distance, float angle) const
+{
+    float x = horizontal_distance;
+    float t, y;
+    t = (float)((exp(this->_k / this->_m * x) - 1) / (this->_k / this->_m * this->_v * cos(angle)));
+    y = (float)(this->_v * sin(angle) * t - GimbalController::g * t * t / 2);
+    return y;
+}
+
+float GimbalController::getPitch(float horizontal_distance, float vertical_distance, double err) const
+{
+    float x = horizontal_distance, y = vertical_distance;
+    float y_temp = y;
+    float angle = atan2(y_temp, x);
+    float dy = y - this->bulletModel(x, angle);
+    for (int i = 0; i < 20 && fabs(dy) >= err; i++)
+    {
+        y_temp += dy;
+        angle = atan2(y_temp, x);
+        dy = y - this->bulletModel(x, angle);
+    }
+    // TODO:debug
+    printf("final error in GimbalController::getPitch(): %f", dy);
+
+    return angle;
+}
+
+void GimbalController::transform(Point3f targetPos, float& yaw_dst, float& pitch_dst) const
+{
+    float horizontal_distance = sqrt(pow(targetPos.x, 2) + pow(targetPos.y, 2));
+    float vertical_distance = -targetPos.z; // change downright direction to upright direction 
+    pitch_dst = this->getPitch(horizontal_distance, vertical_distance);
+    yaw_dst = atan2(-targetPos.y, targetPos.x);
+    return ;
+}
+
+
 // Usually, default params work well and needless to set
 bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, double nearbyPercentage, uint angleSampleSize)
 {
@@ -103,7 +148,7 @@ bool MillHiter::init(Mat src, int mode, uint dotSampleSize, double DistanceErr, 
     // 与判断机关旋转方向是同步执行的
     if (!noR && noRoi) // 不加else是因为可能在此帧拟合出来了R点，如果加了，在这帧，这个分支就会被跳过
     {
-        this->_roi = centerRoi(src, this->_centerR);                       // centerRoi一般会成功，但也有可能失败
+        this->_roi = getRoi(src, this->_centerR);                       // getRoi一般会成功，但也有可能失败
         if (this->_roi.width == src.cols && this->_roi.height == src.rows) // 如果出现_roi区域和全图的大小一样，说明这次寻找失败了，设置_roiAvail为false，下次再找
         {
             this->_roiAvail = false;
@@ -178,7 +223,7 @@ bool MillHiter::targetLock(Mat src, Point2f &aim, int mode, int SampleSize, doub
 
     if (noRoi && !noR) // 不加else是因为可能在此帧拟合出来了R点，如果加了，在这帧，这个分支就会被跳过
     {
-        this->_roi = centerRoi(src, this->_centerR);                       // centerRoi一般会成功，但也有可能失败
+        this->_roi = this->getRoi(src, this->_centerR);                       // getRoi一般会成功，但也有可能失败
         if (this->_roi.width == src.cols && this->_roi.height == src.rows) // 如果出现_roi区域和全图的大小一样，说明这次寻找失败了，设置_roiAvail为false，下次再找
         {
             this->_roiAvail = false;
@@ -429,11 +474,11 @@ RotatedRect MillHiter::armorDetect(Mat src) const
 }
 
 // 对于wind.mp4 roi卡范围的效果很好
-Rect MillHiter::centerRoi(Mat src, const Point2f &center)
+Rect MillHiter::getRoi(Mat src, const Point2f &center)
 {
     if (src.empty())
     {
-        printf("src received by 'centerRoi()' is empty\n");
+        printf("src received by 'getRoi()' is empty\n");
         return Rect(0, 0, src.cols, src.rows);
     }
     Point2f vertex[4];

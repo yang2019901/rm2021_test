@@ -66,10 +66,33 @@ const int COUNTERCLOCKWISE = -1;
     float _angle;
 } Angle_SpinParams; */
 
+/** @brief: orthogonal right-hand coordinate system (unit: meter):
+ *              z axis: direction of gravity;
+ *              x axis: projection of the heading of the camera (vertical to z axis)\
+ *              y axis: direction defined by x&z axses and right-hand principle
+ *          polar system (unit: rad):
+ *              polar axis of Yaw: x axis;  plane of Yaw: xOy
+ *              polar axis of Pitch: x axis;    plane of Pitch: xOz 
+ */
+class GimbalController
+{
+protected:
+    float _v;   // v0, the initial velocity of the projectile
+    float _k;   // as in `f = kv^2`
+    float _m;   // mass of projectile 
+    static constexpr float g = 9.80; // gravity accelaration
+
+public:
+    GimbalController(void):_v(0), _k(0), _m(0) {};
+    GimbalController(float v, float k, float m):_v(v), _k(k), _m(m) {};
+    void init(float v, float k, float m);
+    float bulletModel(float horizontal_distance, float angle) const;
+    float getPitch(float horizontal_distance, float vertical_distance, double err = 1E-4) const;
+    void transform(Point3f targetPos, float& yaw_dst, float& pitch_dst) const;
+};
 
 // NOTE: ROI算法的前提是相机参考系与大符参考系完全相对静止，这就要求不能使用安装在枪管上的相机，不然图片会随之而动，导致ROI设置失败
 // TODO: 增加斜侧向打符的功能，主要用于干扰对方（想法：仿射变换 or 透视变换）
-
 class MillHiter
 {
 protected:
@@ -89,6 +112,11 @@ protected:
     size_t frame_counter;         // 记录参数修正次数
     /* ++++++++++++ */
 
+/* ++++++++++++ */
+public:
+    GimbalController gimbal;
+/* ++++++++++++ */
+
 public:
     /* 取消默认构造函数，如果没有colorFlag（也即不输入打哪种颜色的装甲），就报错，终止运行 */
     MillHiter(bool colorFlag)
@@ -105,10 +133,14 @@ public:
         this->predictor.init_filter_variance(0.1, 0.01);
         /* ++++++++++++++++++++ */
     };
-
+    MillHiter(bool colorFlag, float v, float k, float m)
+    : _colorFlag(colorFlag), _roiAvail(false), _centerRAvail(false), _spinDir(UNKNOWN), frame_counter(0), gimbal(v, k, m)
+    {
+        this->predictor.init_filter_variance(0.1, 0.01);
+    };
     // 实现初始化功能的函数，初始化完成后，大风车的中心_centerR，大风车的旋转方向_spinDir和ROI区域_roi确定，而大能量机关的旋转方向不能确定，需要另行初始化！
     bool init(Mat src, int mode = 1, uint dotSampleSize = 5, double DistanceErr = 7.0, double nearbyPercentage = 0.8, uint angleSampleSize = 5);
-    
+
     // 实现预测功能的两个函数
     bool predictConstSpeed(const Point2f &nowPos, Point2f &predPos, double dt);
     /* 传入现在的点坐标，以及预测间隔gap(s)，结果存入predPos */
@@ -140,7 +172,7 @@ protected:
     /* 与实现roi设置有关的函数 */
     bool findMillCenter(Mat src, Point2f &center) const;
     RotatedRect armorDetect(Mat src) const;
-    Rect centerRoi(Mat src, const Point2f &center);
+    Rect getRoi(Mat src, const Point2f &center);  // get ROI by center position of the mill
     void trimRegion(Mat src, Rect &region) const;
 };
 
